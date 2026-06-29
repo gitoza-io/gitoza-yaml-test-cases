@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+out/
+*.vsix
+
+# Test coverage
+coverage/
+
+# TypeScript
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# VS Code extension testing
+.vscode-test/
+
+# Vite / Vitest cache (when outside node_modules)
+.vite/
