@@ -3,7 +3,7 @@
   "displayName": "Gitoza — YAML Test Case Manager",
   "description": "Manage Gitoza YAML test cases and test runs in VS Code. Edit cases, organize suites, and execute manual test runs from .gitoza-lite/test/cases/.",
   "version": "0.1.0",
-  "publisher": "gitoza-io",
+  "publisher": "gitoza",
   "license": "MIT",
   "icon": "media/128x128.png",
   "repository": {
