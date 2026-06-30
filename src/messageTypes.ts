@@ -138,6 +138,7 @@ export type WebviewRequestType =
   | "addRunCases"
   | "removeRunCase"
   | "setRunCaseResult"
+  | "setRunCaseResults"
   | "deleteRun"
   | "initializeRunsRoot";
 
@@ -173,6 +174,11 @@ export interface RunsUpdatedMessage {
   type: "runsUpdated";
 }
 
+export interface ThemeChangedMessage {
+  type: "themeChanged";
+  theme: "light" | "dark";
+}
+
 export interface ErrorMessage {
   type: "error";
   message: string;
@@ -183,4 +189,5 @@ export type HostToWebviewMessage =
   | WebviewResponse
   | CasesUpdatedMessage
   | RunsUpdatedMessage
+  | ThemeChangedMessage
   | ErrorMessage;

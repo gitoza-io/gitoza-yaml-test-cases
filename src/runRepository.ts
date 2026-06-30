@@ -18,6 +18,7 @@ import {
   parseRunYaml,
   serializeRunYaml,
 } from "./runYamlIO";
+import { applyResultUpdates } from "./runResultUpdates";
 
 function normalizePath(path: string): string {
   return path.replace(/\\/g, "/");
@@ -270,19 +271,18 @@ export class RunRepository {
     path: string,
     result: RunCaseResult,
   ): Promise<RunDetail> {
-    const { resolved, fileRel, parsed } = await this.readRunFile(runId);
-    const norm = normalizePath(path);
-    let found = false;
-    const cases = parsed.cases.map((c) => {
-      if (normalizePath(c.path) === norm) {
-        found = true;
-        return { ...c, result };
-      }
-      return c;
-    });
-    if (!found) {
-      throw new Error(`Case not in run: ${norm}`);
+    return this.setRunCaseResults(runId, [{ path, result }]);
+  }
+
+  async setRunCaseResults(
+    runId: string,
+    updates: { path: string; result: RunCaseResult }[],
+  ): Promise<RunDetail> {
+    if (!updates.length) {
+      return this.getRunDetail(runId);
     }
+    const { resolved, fileRel, parsed } = await this.readRunFile(runId);
+    const cases = applyResultUpdates(parsed.cases, updates);
     await this.writeRunFile(resolved, fileRel, {
       title: parsed.title,
       cases,

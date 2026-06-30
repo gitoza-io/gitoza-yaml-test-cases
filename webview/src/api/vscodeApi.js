@@ -7,6 +7,7 @@ let initPayload = null;
 const initListeners = new Set();
 let casesUpdatedListeners = new Set();
 let runsUpdatedListeners = new Set();
+let themeChangedListeners = new Set();
 
 function applyInitPayload(payload) {
   if (!payload || payload.type !== "init") return;
@@ -31,6 +32,11 @@ if (typeof window !== "undefined") {
 
     if (msg.type === "runsUpdated") {
       for (const fn of runsUpdatedListeners) fn();
+      return;
+    }
+
+    if (msg.type === "themeChanged") {
+      for (const fn of themeChangedListeners) fn(msg.theme);
       return;
     }
 
@@ -81,6 +87,11 @@ export function onRunsUpdated(listener) {
   return () => runsUpdatedListeners.delete(listener);
 }
 
+export function onThemeChanged(listener) {
+  themeChangedListeners.add(listener);
+  return () => themeChangedListeners.delete(listener);
+}
+
 export function getInitPayload() {
   return initPayload;
 }
@@ -129,6 +140,9 @@ export const removeRunCase = (runId, path) =>
 
 export const setRunCaseResult = (runId, path, result) =>
   request("setRunCaseResult", { runId, path, result });
+
+export const saveRunResults = (runId, updates) =>
+  request("setRunCaseResults", { runId, updates });
 
 export const deleteRun = (runId) => request("deleteRun", { runId });
 

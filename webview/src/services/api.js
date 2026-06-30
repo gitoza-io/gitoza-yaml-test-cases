@@ -40,6 +40,7 @@ import {
   addRunCases as addRunCasesRequest,
   removeRunCase as removeRunCaseRequest,
   setRunCaseResult as setRunCaseResultRequest,
+  saveRunResults as saveRunResultsRequest,
   deleteRun as deleteRunRequest,
   initializeRunsRoot,
 } from "../api/vscodeApi.js";
@@ -130,5 +131,8 @@ export const removeRunCase = (runId, path) =>
 
 export const setRunCaseResult = (runId, path, result) =>
   setRunCaseResultRequest(runId, path, result);
+
+export const saveRunResults = (runId, updates) =>
+  saveRunResultsRequest(runId, updates);
 
 export const deleteRun = (runId) => deleteRunRequest(runId);

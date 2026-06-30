@@ -80,6 +80,16 @@ async function handleWebviewRequest(
         String(message.payload?.path ?? ""),
         String(message.payload?.result ?? "pending") as RunCaseResult,
       );
+    case "setRunCaseResults":
+      return runRepo.setRunCaseResults(
+        String(message.payload?.runId ?? ""),
+        ((message.payload?.updates as { path: string; result: string }[]) ?? []).map(
+          (u) => ({
+            path: String(u.path ?? ""),
+            result: String(u.result ?? "pending") as RunCaseResult,
+          }),
+        ),
+      );
     case "deleteRun":
       await runRepo.deleteRun(String(message.payload?.runId ?? ""));
       return { ok: true };
@@ -90,15 +100,20 @@ async function handleWebviewRequest(
   }
 }
 
+function getWebviewTheme(): "light" | "dark" {
+  const kind = vscode.window.activeColorTheme.kind;
+  return kind === vscode.ColorThemeKind.Dark ||
+    kind === vscode.ColorThemeKind.HighContrast
+    ? "dark"
+    : "light";
+}
+
 async function buildInitPayload() {
   const casesResolved = await resolveCasesRootUri();
   const runsResolved = await resolveRunsRootUri();
   const hasCases = await hasCasesRoot();
   const hasRuns = await hasRunsRoot();
-  const theme =
-    vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark
-      ? "dark"
-      : "light";
+  const theme = getWebviewTheme();
   return {
     type: "init" as const,
     theme,
@@ -130,13 +145,16 @@ function getWebviewHtml(
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource}; img-src ${webview.cspSource} data: blob:;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
+    html {
+      font-size: var(--vscode-font-size, 13px);
+    }
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
     #root { height: 100%; }
   </style>
   <link rel="stylesheet" href="${styleUri}">
   <title>${title}</title>
 </head>
-<body>
+<body class="vscode-host">
   <div id="root"></div>
   <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
 </body>
@@ -171,6 +189,7 @@ export class GitozaWebviewPanel {
     );
     this.setupMessageHandler(this.panel.webview);
     this.setupWatcher();
+    this.setupThemeListener();
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
   }
 
@@ -244,6 +263,17 @@ export class GitozaWebviewPanel {
 
   public async sendInit(): Promise<void> {
     this.postMessage(await buildInitPayload());
+  }
+
+  private setupThemeListener(): void {
+    this.disposables.push(
+      vscode.window.onDidChangeActiveColorTheme(() => {
+        this.postMessage({
+          type: "themeChanged",
+          theme: getWebviewTheme(),
+        });
+      }),
+    );
   }
 
   private setupWatcher(): void {

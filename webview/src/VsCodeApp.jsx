@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Sidebar from "./components/Sidebar";
 import TestRepositoryPage from "./pages/TestRepositoryPage";
 import TestRunPage from "./pages/TestRunPage";
 import ComingSoonPage from "./pages/ComingSoonPage";
-import { getInitPayload, onInit, ready } from "./api/vscodeApi";
+import { getInitPayload, onInit, onThemeChanged, ready } from "./api/vscodeApi";
 
 export default function VsCodeApp() {
   const [activeView, setActiveView] = useState("explorer");
@@ -14,6 +14,8 @@ export default function VsCodeApp() {
     () => getInitPayload()?.hasRunsRoot ?? false,
   );
   const [theme, setTheme] = useState(() => getInitPayload()?.theme ?? "light");
+  const [runResultsDirty, setRunResultsDirty] = useState(false);
+  const leaveTestRunRef = useRef(null);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -21,15 +23,30 @@ export default function VsCodeApp() {
 
   useEffect(() => {
     void ready();
-    return onInit((init) => {
+    const offInit = onInit((init) => {
       setHasCasesRoot(Boolean(init.hasCasesRoot));
       setHasRunsRoot(Boolean(init.hasRunsRoot));
       setTheme(init.theme === "dark" ? "dark" : "light");
     });
+    const offTheme = onThemeChanged((nextTheme) => {
+      setTheme(nextTheme === "dark" ? "dark" : "light");
+    });
+    return () => {
+      offInit();
+      offTheme();
+    };
   }, []);
 
   const handleChangeView = useCallback((view) => {
+    if (activeView === "testrun" && view !== "testrun" && runResultsDirty) {
+      leaveTestRunRef.current?.(() => setActiveView(view));
+      return;
+    }
     setActiveView(view);
+  }, [activeView, runResultsDirty]);
+
+  const registerLeaveTestRunHandler = useCallback((handler) => {
+    leaveTestRunRef.current = handler;
   }, []);
 
   const handleCasesRootInitialized = useCallback(() => {
@@ -54,6 +71,8 @@ export default function VsCodeApp() {
             hasCasesRoot={hasCasesRoot}
             hasRunsRoot={hasRunsRoot}
             onRunsRootInitialized={handleRunsRootInitialized}
+            onDirtyChange={setRunResultsDirty}
+            registerLeaveHandler={registerLeaveTestRunHandler}
           />
         ) : (
           <ComingSoonPage viewKey={activeView} />

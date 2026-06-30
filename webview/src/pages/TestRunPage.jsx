@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Plus, Save } from "lucide-react";
 import TestRepositoryThreeColumnLayout from "../components/TestRepositoryThreeColumnLayout";
 import RunSidebarList from "../components/RunSidebarList";
 import RunPaginatedCaseList from "../components/RunPaginatedCaseList";
@@ -7,7 +7,9 @@ import CaseDetailView from "../components/CaseDetailView";
 import DetailPanelEmpty from "../components/DetailPanelEmpty";
 import DetailPanelLoading from "../components/DetailPanelLoading";
 import AddRunCasesModal from "../components/AddRunCasesModal";
+import UnsavedChangesDialog from "../components/UnsavedChangesDialog";
 import { RUNS_ROOT } from "../constants/runPaths";
+import { useRunResultDraft } from "../hooks/useRunResultDraft";
 import {
   addRunCases,
   createRun,
@@ -17,10 +19,11 @@ import {
   initializeRunsRoot,
   listRuns,
   removeRunCase,
-  setRunCaseResult,
+  saveRunResults,
 } from "../services/api";
 import { onCasesUpdated, onRunsUpdated } from "../api/vscodeApi";
 import { TestCaseIcon } from "../components/TestEntityIcons";
+import { countResultsFromCases } from "../utils/applyPendingRunResults";
 import { browseColumnNoSelect } from "../utils/layoutClasses";
 
 const ACTIVE_REPO = "vscode";
@@ -29,10 +32,11 @@ export default function TestRunPage({
   hasCasesRoot,
   hasRunsRoot,
   onRunsRootInitialized,
+  onDirtyChange,
+  registerLeaveHandler,
 }) {
   const [runs, setRuns] = useState([]);
   const [selectedRunId, setSelectedRunId] = useState(null);
-  const [runDetail, setRunDetail] = useState(null);
   const [runDetailLoading, setRunDetailLoading] = useState(false);
   const [selectedCasePath, setSelectedCasePath] = useState(null);
   const [caseDetail, setCaseDetail] = useState(null);
@@ -40,6 +44,29 @@ export default function TestRunPage({
   const [creatingRun, setCreatingRun] = useState(false);
   const [showAddCasesModal, setShowAddCasesModal] = useState(false);
   const [caseListPage, setCaseListPage] = useState(1);
+  const [unsavedDialog, setUnsavedDialog] = useState(null);
+
+  const isDirtyRef = useRef(false);
+
+  const {
+    displayDetail,
+    isDirty,
+    saving,
+    saveError,
+    setResult,
+    save,
+    discard,
+    resetFromServer,
+  } = useRunResultDraft({
+    runId: selectedRunId,
+    saveRunResults,
+  });
+
+  isDirtyRef.current = isDirty;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const loadRuns = useCallback(async () => {
     if (!hasRunsRoot) {
@@ -54,21 +81,24 @@ export default function TestRunPage({
     }
   }, [hasRunsRoot]);
 
-  const loadRunDetail = useCallback(async (runId) => {
-    if (!runId || !hasRunsRoot) {
-      setRunDetail(null);
-      return;
-    }
-    setRunDetailLoading(true);
-    try {
-      const detail = await getRunDetail(runId);
-      setRunDetail(detail);
-    } catch {
-      setRunDetail(null);
-    } finally {
-      setRunDetailLoading(false);
-    }
-  }, [hasRunsRoot]);
+  const loadRunDetail = useCallback(
+    async (runId) => {
+      if (!runId || !hasRunsRoot) {
+        resetFromServer(null);
+        return;
+      }
+      setRunDetailLoading(true);
+      try {
+        const detail = await getRunDetail(runId);
+        resetFromServer(detail);
+      } catch {
+        resetFromServer(null);
+      } finally {
+        setRunDetailLoading(false);
+      }
+    },
+    [hasRunsRoot, resetFromServer],
+  );
 
   useEffect(() => {
     void loadRuns();
@@ -76,6 +106,7 @@ export default function TestRunPage({
 
   useEffect(() => {
     return onRunsUpdated(() => {
+      if (isDirtyRef.current) return;
       void loadRuns();
       if (selectedRunId) {
         void loadRunDetail(selectedRunId);
@@ -90,7 +121,7 @@ export default function TestRunPage({
           .then(setCaseDetail)
           .catch(() => {});
       }
-      if (selectedRunId) {
+      if (selectedRunId && !isDirtyRef.current) {
         void loadRunDetail(selectedRunId);
       }
     });
@@ -98,14 +129,14 @@ export default function TestRunPage({
 
   useEffect(() => {
     if (!selectedRunId) {
-      setRunDetail(null);
+      resetFromServer(null);
       setSelectedCasePath(null);
       return;
     }
     void loadRunDetail(selectedRunId);
     setSelectedCasePath(null);
     setCaseListPage(1);
-  }, [selectedRunId, loadRunDetail]);
+  }, [selectedRunId, loadRunDetail, resetFromServer]);
 
   useEffect(() => {
     if (!selectedCasePath) {
@@ -129,16 +160,76 @@ export default function TestRunPage({
     };
   }, [selectedCasePath]);
 
-  const runCases = useMemo(() => runDetail?.cases ?? [], [runDetail]);
+  const runCases = useMemo(() => displayDetail?.cases ?? [], [displayDetail]);
+
+  const displayRuns = useMemo(() => {
+    if (!isDirty || !selectedRunId || !displayDetail?.cases) {
+      return runs;
+    }
+    const counts = countResultsFromCases(displayDetail.cases);
+    return runs.map((r) =>
+      r.run_id === selectedRunId
+        ? {
+            ...r,
+            case_count: displayDetail.cases.length,
+            ...counts,
+          }
+        : r,
+    );
+  }, [runs, isDirty, selectedRunId, displayDetail]);
 
   const existingRunPaths = useMemo(
     () => new Set(runCases.map((c) => c.file_path)),
     [runCases],
   );
 
-  const handleSelectRun = useCallback((run) => {
-    setSelectedRunId(run?.run_id ?? null);
+  const guardUnsaved = useCallback((continueAction) => {
+    if (!isDirtyRef.current) {
+      continueAction();
+      return;
+    }
+    setUnsavedDialog({ continueAction });
   }, []);
+
+  useEffect(() => {
+    if (!registerLeaveHandler) return undefined;
+    registerLeaveHandler((proceed) => {
+      guardUnsaved(proceed);
+    });
+    return () => registerLeaveHandler(null);
+  }, [registerLeaveHandler, guardUnsaved]);
+
+  const handleUnsavedSave = useCallback(async () => {
+    const action = unsavedDialog?.continueAction;
+    try {
+      await save();
+      setUnsavedDialog(null);
+      await loadRuns();
+      action?.();
+    } catch {
+      // saveError shown in column 2 header
+    }
+  }, [unsavedDialog, save, loadRuns]);
+
+  const handleUnsavedDiscard = useCallback(() => {
+    const action = unsavedDialog?.continueAction;
+    discard();
+    setUnsavedDialog(null);
+    action?.();
+  }, [unsavedDialog, discard]);
+
+  const handleUnsavedCancel = useCallback(() => {
+    setUnsavedDialog(null);
+  }, []);
+
+  const handleSelectRun = useCallback(
+    (run) => {
+      const nextId = run?.run_id ?? null;
+      if (nextId === selectedRunId) return;
+      guardUnsaved(() => setSelectedRunId(nextId));
+    },
+    [selectedRunId, guardUnsaved],
+  );
 
   const handleCommitCreateRun = useCallback(
     async (name) => {
@@ -156,62 +247,91 @@ export default function TestRunPage({
   );
 
   const handleDeleteRun = useCallback(
-    async (runId) => {
-      await deleteRun(runId);
-      if (selectedRunId === runId) {
-        setSelectedRunId(null);
+    (runId) => {
+      const performDelete = async () => {
+        await deleteRun(runId);
+        if (selectedRunId === runId) {
+          setSelectedRunId(null);
+        }
+        await loadRuns();
+      };
+      if (runId === selectedRunId && isDirtyRef.current) {
+        guardUnsaved(() => {
+          void performDelete();
+        });
+        return;
       }
-      await loadRuns();
+      void performDelete();
     },
-    [loadRuns, selectedRunId],
+    [loadRuns, selectedRunId, guardUnsaved],
   );
 
   const handleSetResult = useCallback(
-    async (_runId, filePath, result) => {
-      if (!selectedRunId) return;
-      const detail = await setRunCaseResult(selectedRunId, filePath, result);
-      setRunDetail(detail);
-      await loadRuns();
+    (_runId, filePath, result) => {
+      setResult(filePath, result);
     },
-    [selectedRunId, loadRuns],
+    [setResult],
   );
 
-  const handleAddCases = useCallback(
-    async (paths) => {
-      if (!selectedRunId) return;
-      const detail = await addRunCases(selectedRunId, paths);
-      setRunDetail(detail);
-      setShowAddCasesModal(false);
+  const handleSave = useCallback(async () => {
+    try {
+      await save();
       await loadRuns();
+    } catch {
+      // saveError shown in header
+    }
+  }, [save, loadRuns]);
+
+  const handleAddCases = useCallback(
+    (paths) => {
+      const performAdd = async () => {
+        if (!selectedRunId) return;
+        const detail = await addRunCases(selectedRunId, paths);
+        resetFromServer(detail);
+        setShowAddCasesModal(false);
+        await loadRuns();
+      };
+      guardUnsaved(() => {
+        void performAdd();
+      });
     },
-    [selectedRunId, loadRuns],
+    [selectedRunId, resetFromServer, loadRuns, guardUnsaved],
   );
 
   const handleRemoveCase = useCallback(
-    async (row) => {
-      if (!selectedRunId || !row?.file_path) return;
-      const detail = await removeRunCase(selectedRunId, row.file_path);
-      setRunDetail(detail);
-      if (selectedCasePath === row.file_path) {
-        setSelectedCasePath(null);
-      }
-      await loadRuns();
+    (row) => {
+      const performRemove = async () => {
+        if (!selectedRunId || !row?.file_path) return;
+        const detail = await removeRunCase(selectedRunId, row.file_path);
+        resetFromServer(detail);
+        if (selectedCasePath === row.file_path) {
+          setSelectedCasePath(null);
+        }
+        await loadRuns();
+      };
+      guardUnsaved(() => {
+        void performRemove();
+      });
     },
-    [selectedRunId, selectedCasePath, loadRuns],
+    [selectedRunId, selectedCasePath, resetFromServer, loadRuns, guardUnsaved],
   );
 
   const getContextMenuItems = useCallback(
     (row, closeMenu) => [
       {
         label: "Remove from run",
-        onClick: async () => {
+        onClick: () => {
           closeMenu(null);
-          await handleRemoveCase(row);
+          handleRemoveCase(row);
         },
       },
     ],
     [handleRemoveCase],
   );
+
+  const openAddCasesModal = useCallback(() => {
+    guardUnsaved(() => setShowAddCasesModal(true));
+  }, [guardUnsaved]);
 
   if (!hasRunsRoot) {
     return (
@@ -243,7 +363,7 @@ export default function TestRunPage({
     );
   }
 
-  const selectedRun = runs.find((r) => r.run_id === selectedRunId);
+  const selectedRun = displayRuns.find((r) => r.run_id === selectedRunId);
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -254,7 +374,7 @@ export default function TestRunPage({
         }}
         treeColumn={
           <RunSidebarList
-            runs={runs}
+            runs={displayRuns}
             selectedRunId={selectedRunId}
             onSelectRun={handleSelectRun}
             creatingRun={creatingRun}
@@ -266,23 +386,43 @@ export default function TestRunPage({
         caseListColumn={
           <div className="flex h-full min-h-0 flex-col overflow-hidden">
             <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 px-2 py-2 dark:border-slate-700">
-              <span className="min-w-0 truncate text-sm font-medium text-slate-800 dark:text-slate-200">
-                {selectedRun?.title || selectedRun?.run_id || "Cases"}
-              </span>
-              <button
-                type="button"
-                disabled={!selectedRunId || !hasCasesRoot}
-                title={
-                  !hasCasesRoot
-                    ? "Initialize the test repository before adding cases"
-                    : "Add cases from repository"
-                }
-                onClick={() => setShowAddCasesModal(true)}
-                className="inline-flex shrink-0 items-center gap-1 rounded-ui border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add cases
-              </button>
+              <div className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                  {selectedRun?.title || selectedRun?.run_id || "Cases"}
+                </span>
+                {isDirty ? (
+                  <span className="text-xs text-amber-600 dark:text-amber-400">Unsaved changes</span>
+                ) : null}
+                {saveError ? (
+                  <span className="block truncate text-xs text-red-600 dark:text-red-400">{saveError}</span>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  disabled={!isDirty || saving || !selectedRunId}
+                  title="Save test results"
+                  onClick={() => void handleSave()}
+                  className="inline-flex items-center gap-1 rounded-ui border border-slate-200 px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:text-indigo-300 dark:hover:bg-indigo-500/10"
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  {saving ? "Saving…" : "Save"}
+                </button>
+                <button
+                  type="button"
+                  disabled={!selectedRunId || !hasCasesRoot}
+                  title={
+                    !hasCasesRoot
+                      ? "Initialize the test repository before adding cases"
+                      : "Add cases from repository"
+                  }
+                  onClick={openAddCasesModal}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-ui border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add cases
+                </button>
+              </div>
             </div>
             <RunPaginatedCaseList
               cases={runCases}
@@ -334,6 +474,13 @@ export default function TestRunPage({
           onClose={() => setShowAddCasesModal(false)}
         />
       ) : null}
+      <UnsavedChangesDialog
+        open={Boolean(unsavedDialog)}
+        saving={saving}
+        onSave={() => void handleUnsavedSave()}
+        onDiscard={handleUnsavedDiscard}
+        onCancel={handleUnsavedCancel}
+      />
     </div>
   );
 }

@@ -47,9 +47,46 @@ body,
   overflow: hidden;
 }
 
+/* Match VS Code workbench typography; fallbacks for Vite dev outside the extension host. */
+html {
+  font-size: var(--vscode-font-size, 13px);
+}
+
 body {
+  font-family: var(
+    --vscode-font-family,
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif
+  );
   @apply bg-slate-50 text-ink antialiased dark:bg-slate-950 dark:text-slate-100;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+
+body.vscode-host {
+  color: var(--vscode-foreground);
+  background-color: var(--vscode-editor-background);
+}
+
+body.vscode-host .font-mono,
+body.vscode-host code,
+body.vscode-host pre code {
+  font-family: var(
+    --vscode-editor-font-family,
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace
+  );
 }
 
 /* macOS overlay title bar: drag region under native traffic lights. */
