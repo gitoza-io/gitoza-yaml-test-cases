@@ -1,8 +1,8 @@
 {
   "name": "gitoza-yaml-test-cases",
-  "displayName": "Gitoza — YAML Test Case Manager",
-  "description": "Manage Gitoza YAML test cases and test runs in VS Code. Edit cases, organize suites, and execute manual test runs from .gitoza-lite/test/cases/.",
-  "version": "0.1.0",
+  "displayName": "YAML Test Cases & Runs — QA for VS Code",
+  "description": "Manage manual test cases and runs as YAML in your repo. Browse suites, edit cases, execute test runs — AI-friendly plain files for Cursor, Copilot & ChatGPT.",
+  "version": "0.1.1",
   "publisher": "gitoza",
   "license": "MIT",
   "icon": "media/128x128.png",
@@ -17,16 +17,21 @@
     "Testing"
   ],
   "keywords": [
-    "gitoza",
     "test case",
     "test cases",
-    "test management",
     "manual testing",
     "qa",
-    "yaml",
+    "quality assurance",
+    "test management",
+    "test plan",
+    "test suite",
     "test run",
+    "yaml",
     "test repository",
-    "quality assurance"
+    "cursor",
+    "copilot",
+    "ai",
+    "gitoza"
   ],
   "galleryBanner": {
     "color": "#1e1e2e",

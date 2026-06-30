@@ -5,6 +5,13 @@ All notable changes to this extension are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-06-30
+
+### Changed
+
+- Marketplace listing — keyword-focused title and description for test case / QA search
+- README — AI-friendly workflow moved up; screenshots stacked full-width for readability
+
 ## [0.1.0] - 2026-06-30
 
 ### Added
@@ -16,4 +23,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Activity Bar launcher and **Gitoza: Open Test Repository** command
 - Pending run-result updates with unsaved-changes prompt before save
 
+[0.1.1]: https://github.com/gitoza-io/gitoza-yaml-test-cases/releases/tag/v0.1.1
 [0.1.0]: https://github.com/gitoza-io/gitoza-yaml-test-cases/releases/tag/v0.1.0
