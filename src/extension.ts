@@ -11,20 +11,22 @@ export function activate(context: vscode.ExtensionContext): void {
   caseRepo = new CaseRepository();
   runRepo = new RunRepository(caseRepo);
 
+  const openTestRepository = () => {
+    GitozaWebviewPanel.createOrShow(
+      context.extensionUri,
+      caseRepo,
+      runRepo,
+    );
+  };
+
   const openCommand = vscode.commands.registerCommand(
     "gitoza.openTestRepository",
-    () => {
-      GitozaWebviewPanel.createOrShow(
-        context.extensionUri,
-        caseRepo,
-        runRepo,
-      );
-    },
+    openTestRepository,
   );
 
   context.subscriptions.push(
     openCommand,
-    registerLauncherTree(context),
+    registerLauncherTree(context, openTestRepository),
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
       GitozaWebviewPanel.currentPanel?.notifyCasesUpdated();
       GitozaWebviewPanel.currentPanel?.notifyRunsUpdated();
@@ -34,7 +36,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
 
-  GitozaWebviewPanel.createOrShow(context.extensionUri, caseRepo, runRepo);
+  openTestRepository();
 }
 
 export function deactivate(): void {

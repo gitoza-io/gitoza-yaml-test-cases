@@ -60,7 +60,7 @@ Each run is a single YAML file listing case paths and results:
 
 1. Open a repository in VS Code.
 2. The **Gitoza Test Repository** tab opens in the editor area when the extension activates (when `.gitoza-lite/test/cases/` exists, or after you run the open command below).
-3. If the tab was closed, click the **Gitoza** icon in the Activity Bar and choose **Open Test Repository**, or run **Gitoza: Open Test Repository** from the Command Palette.
+3. If the tab was closed, click the **Gitoza** icon in the Activity Bar (opens/focuses the editor tab), or run **Gitoza: Open Test Repository** from the Command Palette.
 4. If `.gitoza-lite/test/cases/` does not exist, use **Create first project** to initialize it.
 5. Switch to **Test Run** in the sidebar to create runs, add cases from the repository, and mark Pass / Fail / Skip.
 

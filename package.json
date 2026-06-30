@@ -39,6 +39,7 @@
   },
   "activationEvents": [
     "workspaceContains:.gitoza-lite/test/cases",
+    "onView:gitoza.launcher",
     "onCommand:gitoza.openTestRepository"
   ],
   "main": "./dist/extension.js",
@@ -67,13 +68,7 @@
           "type": "tree"
         }
       ]
-    },
-    "viewsWelcome": [
-      {
-        "view": "gitoza.launcher",
-        "contents": "Open the test repository in the editor.\n[Open Test Repository](command:gitoza.openTestRepository)"
-      }
-    ]
+    }
   },
   "scripts": {
     "build:ext": "node esbuild.mjs",
