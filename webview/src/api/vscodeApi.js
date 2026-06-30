@@ -170,21 +170,20 @@ export const deleteCaseComment = async () => {
 export const archiveCase = async () => {
   throw new Error("Archive is not available in the VS Code preview extension.");
 };
-export const deleteCase = async () => {
-  throw new Error("Delete is not available in the VS Code preview extension.");
-};
+export const deleteCase = (filePaths) =>
+  request("deleteCase", { filePaths: Array.isArray(filePaths) ? filePaths : [filePaths] });
 export const renameCase = async () => {
   throw new Error("Rename is not available in the VS Code preview extension.");
 };
 export const renameFolder = async () => {
   throw new Error("Rename is not available in the VS Code preview extension.");
 };
-export const deleteFolder = async () => {
-  throw new Error("Delete is not available in the VS Code preview extension.");
-};
-export const deleteProject = async () => {
-  throw new Error("Delete is not available in the VS Code preview extension.");
-};
+export const deleteFolder = (folderPath) =>
+  request("deleteFolder", { folderPath });
+export const deleteProject = (projectPath) =>
+  request("deleteProject", { projectPath });
+export const findRunsReferencingCases = (paths) =>
+  request("findRunsReferencingCases", { paths });
 export const archiveFolder = async () => {
   throw new Error("Archive is not available in the VS Code preview extension.");
 };

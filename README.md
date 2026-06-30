@@ -75,6 +75,7 @@ VS Code Explorer stays available alongside the editor tab.
 - **Git-based** — every case and run is a file in version control
 - **Tests as code** — each case is a `.yaml` file with a Markdown body
 - **Create** projects, suites (folders), and test cases
+- **Delete** test cases, suites, and projects (with confirmation; warns when test runs still reference deleted cases)
 - **Manual save** — click Edit, then Save to write YAML (no auto-save)
 - **Editor-tab UI** — Test Repository opens in an editor tab (not the VS Code sidebar)
 - **Test Run** — YAML-backed manual runs with Pass / Fail / Skip

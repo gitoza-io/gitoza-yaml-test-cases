@@ -267,6 +267,26 @@ function RepositoryFolderTree({
       { type: "separator" },
       { icon: Pencil, label: "Rename", onClick: handleContextRename },
     );
+    if (!isProject && onDeleteFolder) {
+      contextMenuItems.push({ type: "separator" });
+      contextMenuItems.push({
+        icon: Trash2,
+        label: "Delete suite…",
+        onClick: handleContextDelete,
+        variant: "danger",
+      });
+    } else if (isProject && onDeleteProject) {
+      contextMenuItems.push({ type: "separator" });
+      contextMenuItems.push({
+        icon: Trash2,
+        label: "Delete project…",
+        variant: "danger",
+        onClick: () => {
+          onDeleteProject(contextMenu.node);
+          setContextMenu(null);
+        },
+      });
+    }
   }
 
   const rowProps = useMemo(

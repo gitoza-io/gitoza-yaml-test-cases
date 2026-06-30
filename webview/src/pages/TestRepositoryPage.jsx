@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TestRepository from "./TestRepository";
 import CreateProjectModal from "../components/CreateProjectModal";
+import { useConfirm } from "../components/ConfirmProvider";
 import { CASES_ROOT } from "../constants/casePaths";
 import {
   createFolder,
   createProject,
   createTestCase,
+  deleteCase,
+  deleteFolder,
+  deleteProject,
+  findRunsReferencingCases,
   getCaseDetail,
   getCaseFilters,
   updateCase,
@@ -14,10 +19,16 @@ import {
 import { useLazyRepositoryTree } from "../hooks/useLazyRepositoryTree";
 import { onCasesUpdated } from "../api/vscodeApi";
 import { findFolderNode, isProjectDirectoryPath } from "../utils/caseTree";
+import {
+  formatRunReferenceWarning,
+  pathUnderPrefix,
+  pathsFromCaseDeletePayload,
+} from "../utils/deleteConfirmCopy";
 
 const ACTIVE_REPO = "vscode";
 
 export default function TestRepositoryPage({ hasCasesRoot, onCasesRootInitialized }) {
+  const confirm = useConfirm();
   const { repositoryTree, projectsReady, treeStructureLoadingPrefixes, loadData } =
     useLazyRepositoryTree(ACTIVE_REPO);
 
@@ -193,6 +204,146 @@ export default function TestRepositoryPage({ hasCasesRoot, onCasesRootInitialize
     [effectiveProjectDir, loadData],
   );
 
+  const clearSelectionUnderPath = useCallback((deletedPath) => {
+    if (selectedCaseFilePath && pathUnderPrefix(selectedCaseFilePath, deletedPath)) {
+      setSelectedCaseFilePath(null);
+      setCaseDetail(null);
+      setIsEditingCase(false);
+    }
+    if (selectedFolderPath && pathUnderPrefix(selectedFolderPath, deletedPath)) {
+      setSelectedFolderPath(null);
+    }
+  }, [selectedCaseFilePath, selectedFolderPath]);
+
+  const appendRunWarning = useCallback(async (paths, description) => {
+    try {
+      const refs = await findRunsReferencingCases(paths);
+      const warning = formatRunReferenceWarning(refs);
+      if (!warning) return description;
+      return description ? `${description}\n\n${warning}` : warning;
+    } catch {
+      return description;
+    }
+  }, []);
+
+  const handleDeleteCase = useCallback(
+    async (payload) => {
+      const paths = pathsFromCaseDeletePayload(payload);
+      if (!paths.length) return;
+
+      const rows = payload.rows ?? (payload.row ? [payload.row] : []);
+      const count = paths.length;
+      const firstLabel =
+        rows[0]?.title?.trim() || rows[0]?.case_id || paths[0].split("/").pop()?.replace(/\.ya?ml$/i, "");
+
+      let description =
+        count === 1
+          ? `Permanently delete "${firstLabel}"? This cannot be undone.`
+          : `Permanently delete ${count} test cases? This cannot be undone.`;
+
+      if (
+        isEditingCase &&
+        selectedCaseFilePath &&
+        paths.some((p) => p === selectedCaseFilePath)
+      ) {
+        description = `You have unsaved changes on this case.\n\n${description}`;
+      }
+
+      description = await appendRunWarning(paths, description);
+
+      const ok = await confirm({
+        title: count === 1 ? "Delete test case?" : `Delete ${count} test cases?`,
+        description,
+        confirmLabel: "Delete",
+        variant: "danger",
+      });
+      if (!ok) return;
+
+      await deleteCase(paths);
+      for (const p of paths) {
+        clearSelectionUnderPath(p);
+      }
+      await loadData();
+      caseListWindowRef.current?.invalidateAll?.();
+    },
+    [
+      appendRunWarning,
+      clearSelectionUnderPath,
+      confirm,
+      isEditingCase,
+      loadData,
+      selectedCaseFilePath,
+    ],
+  );
+
+  const handleDeleteFolder = useCallback(
+    async (folderPath) => {
+      if (!folderPath) return;
+      const node = findFolderNode(repositoryTree, folderPath);
+      const label = node?.display_name ?? node?.name ?? folderPath.split("/").pop();
+      const caseCount = node?.case_count ?? 0;
+
+      let description = `Permanently delete suite "${label}"`;
+      if (caseCount > 0) {
+        description += ` and ${caseCount} test case${caseCount === 1 ? "" : "s"}`;
+      }
+      description += "? This cannot be undone.";
+      description = await appendRunWarning([folderPath], description);
+
+      const ok = await confirm({
+        title: "Delete test suite?",
+        description,
+        confirmLabel: "Delete",
+        variant: "danger",
+      });
+      if (!ok) return;
+
+      await deleteFolder(folderPath);
+      clearSelectionUnderPath(folderPath);
+      await loadData();
+      caseListWindowRef.current?.invalidateAll?.();
+    },
+    [appendRunWarning, clearSelectionUnderPath, confirm, loadData, repositoryTree],
+  );
+
+  const handleDeleteProject = useCallback(
+    async (node) => {
+      const projectPath = node?.directory_path;
+      if (!projectPath) return;
+      const label = node.display_name ?? node.name ?? projectPath.split("/").pop();
+      const caseCount = node.case_count ?? 0;
+      const suiteCount = node.children?.length ?? 0;
+
+      let description = `Permanently delete project "${label}"`;
+      if (caseCount > 0 || suiteCount > 0) {
+        const parts = [];
+        if (caseCount > 0) {
+          parts.push(`${caseCount} test case${caseCount === 1 ? "" : "s"}`);
+        }
+        if (suiteCount > 0) {
+          parts.push(`${suiteCount} suite${suiteCount === 1 ? "" : "s"}`);
+        }
+        description += ` and ${parts.join(" in ")}`;
+      }
+      description += "? This cannot be undone.";
+      description = await appendRunWarning([projectPath], description);
+
+      const ok = await confirm({
+        title: "Delete project?",
+        description,
+        confirmLabel: "Delete",
+        variant: "danger",
+      });
+      if (!ok) return;
+
+      await deleteProject(projectPath);
+      clearSelectionUnderPath(projectPath);
+      await loadData();
+      caseListWindowRef.current?.invalidateAll?.();
+    },
+    [appendRunWarning, clearSelectionUnderPath, confirm, loadData],
+  );
+
   if (!hasCasesRoot) {
     return (
       <div className="flex h-full flex-col items-center justify-center bg-slate-50 px-6 text-center dark:bg-slate-950">
@@ -262,6 +413,9 @@ export default function TestRepositoryPage({ hasCasesRoot, onCasesRootInitialize
         onRegisterCaseListWindow={(api) => {
           caseListWindowRef.current = api;
         }}
+        onDeleteCase={handleDeleteCase}
+        onDeleteFolder={handleDeleteFolder}
+        onDeleteProject={handleDeleteProject}
       />
       {showCreateProjectModal ? (
         <CreateProjectModal

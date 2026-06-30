@@ -140,7 +140,11 @@ export type WebviewRequestType =
   | "setRunCaseResult"
   | "setRunCaseResults"
   | "deleteRun"
-  | "initializeRunsRoot";
+  | "initializeRunsRoot"
+  | "deleteCase"
+  | "deleteFolder"
+  | "deleteProject"
+  | "findRunsReferencingCases";
 
 export interface WebviewRequest {
   type: WebviewRequestType;

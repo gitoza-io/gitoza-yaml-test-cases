@@ -223,6 +223,19 @@ function RepositoryPaginatedCaseList({
         },
       });
     }
+    if (onDeleteCase && !onArchiveCase) {
+      if (items.length > 0) items.push({ type: "separator" });
+      items.push({
+        icon: Trash2,
+        label: actionCount === 1 ? "Delete…" : `Delete (${actionCount})`,
+        variant: "danger",
+        onClick: () => {
+          const payload = buildCaseActionPayload(actionPaths, c, displayCases);
+          if (payload) onDeleteCase(payload);
+          setContextMenu(null);
+        },
+      });
+    }
     return items;
   }, [
     contextMenu,

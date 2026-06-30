@@ -8,6 +8,7 @@ import DetailPanelEmpty from "../components/DetailPanelEmpty";
 import DetailPanelLoading from "../components/DetailPanelLoading";
 import AddRunCasesModal from "../components/AddRunCasesModal";
 import UnsavedChangesDialog from "../components/UnsavedChangesDialog";
+import { useConfirm } from "../components/ConfirmProvider";
 import { RUNS_ROOT } from "../constants/runPaths";
 import { useRunResultDraft } from "../hooks/useRunResultDraft";
 import {
@@ -35,6 +36,7 @@ export default function TestRunPage({
   onDirtyChange,
   registerLeaveHandler,
 }) {
+  const confirm = useConfirm();
   const [runs, setRuns] = useState([]);
   const [selectedRunId, setSelectedRunId] = useState(null);
   const [runDetailLoading, setRunDetailLoading] = useState(false);
@@ -249,6 +251,16 @@ export default function TestRunPage({
   const handleDeleteRun = useCallback(
     (runId) => {
       const performDelete = async () => {
+        const run = runs.find((r) => r.run_id === runId);
+        const label = run?.title?.trim() || runId;
+        const ok = await confirm({
+          title: "Delete test run?",
+          description: `Permanently delete "${label}"? This cannot be undone.`,
+          confirmLabel: "Delete",
+          variant: "danger",
+        });
+        if (!ok) return;
+
         await deleteRun(runId);
         if (selectedRunId === runId) {
           setSelectedRunId(null);
@@ -263,7 +275,7 @@ export default function TestRunPage({
       }
       void performDelete();
     },
-    [loadRuns, selectedRunId, guardUnsaved],
+    [confirm, guardUnsaved, loadRuns, runs, selectedRunId],
   );
 
   const handleSetResult = useCallback(

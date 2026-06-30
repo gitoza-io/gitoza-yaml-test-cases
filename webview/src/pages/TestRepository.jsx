@@ -629,8 +629,8 @@ function TestRepository({
         onCreateFolder={editorLocked || archivedViewOpen ? undefined : onCreateFolder}
         onArchiveFolder={editorLocked || archivedViewOpen ? undefined : onArchiveFolder}
         onRestoreFolder={editorLocked || !archivedViewOpen ? undefined : onRestoreFolder}
-        onDeleteFolder={editorLocked || !archivedViewOpen ? undefined : onDeleteFolder}
-        onDeleteProject={editorLocked || !archivedViewOpen ? undefined : onDeleteProject}
+        onDeleteFolder={editorLocked ? undefined : onDeleteFolder}
+        onDeleteProject={editorLocked ? undefined : onDeleteProject}
         editorLocked={editorLocked}
         archivedView={archivedViewOpen}
         creatingProject={archivedViewOpen ? false : creatingProject}
@@ -677,6 +677,7 @@ function TestRepository({
       showNoFolderWhenEmpty
       emptyMessage="No cases in this folder"
       caseSelectionConfig={browseSelectionConfig}
+      onDeleteCase={onDeleteCase}
       onArchiveCase={editorLocked ? undefined : onArchiveCase}
       onRestoreCase={editorLocked ? undefined : onRestoreCase}
       onRenameCase={editorLocked ? undefined : onRenameCase}

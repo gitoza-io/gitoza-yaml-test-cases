@@ -19,6 +19,10 @@ import {
   serializeRunYaml,
 } from "./runYamlIO";
 import { applyResultUpdates } from "./runResultUpdates";
+import {
+  findMatchingRunReferences,
+  type RunReferenceMatch,
+} from "./runReferenceScan";
 
 function normalizePath(path: string): string {
   return path.replace(/\\/g, "/");
@@ -294,5 +298,52 @@ export class RunRepository {
     const { resolved, fileRel } = await this.readRunFile(runId);
     const fileUri = vscode.Uri.joinPath(resolved.folder.uri, fileRel);
     await vscode.workspace.fs.delete(fileUri);
+  }
+
+  async findRunsReferencingPaths(
+    paths: string[],
+  ): Promise<{ runs: RunReferenceMatch[] }> {
+    const resolved = await resolveRunsRootUri();
+    if (!resolved || !paths.length) {
+      return { runs: [] };
+    }
+
+    let entries: [string, vscode.FileType][];
+    try {
+      await vscode.workspace.fs.stat(resolved.runsRootUri);
+      entries = await vscode.workspace.fs.readDirectory(resolved.runsRootUri);
+    } catch {
+      return { runs: [] };
+    }
+
+    const runs: Array<{
+      run_id: string;
+      title?: string;
+      cases: { path: string; result: RunCaseResult }[];
+    }> = [];
+
+    for (const [name, type] of entries) {
+      if (type !== vscode.FileType.File || !/\.ya?ml$/i.test(name)) {
+        continue;
+      }
+      const runId = name.replace(/\.ya?ml$/i, "");
+      const fileRel = joinRepoPath(RUNS_ROOT, name);
+      try {
+        const fileUri = vscode.Uri.joinPath(resolved.folder.uri, fileRel);
+        const bytes = await vscode.workspace.fs.readFile(fileUri);
+        const content = Buffer.from(bytes).toString("utf8");
+        const parsed = parseRunYaml(content);
+        if (!parsed) continue;
+        runs.push({
+          run_id: runId,
+          title: parsed.title,
+          cases: parsed.cases,
+        });
+      } catch {
+        // skip unreadable
+      }
+    }
+
+    return { runs: findMatchingRunReferences(runs, paths) };
   }
 }

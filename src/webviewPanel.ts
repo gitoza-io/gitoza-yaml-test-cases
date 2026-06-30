@@ -93,6 +93,18 @@ async function handleWebviewRequest(
     case "deleteRun":
       await runRepo.deleteRun(String(message.payload?.runId ?? ""));
       return { ok: true };
+    case "deleteCase":
+      return caseRepo.deleteCase(
+        (message.payload?.filePaths as string[]) ?? [],
+      );
+    case "deleteFolder":
+      return caseRepo.deleteFolder(String(message.payload?.folderPath ?? ""));
+    case "deleteProject":
+      return caseRepo.deleteProject(String(message.payload?.projectPath ?? ""));
+    case "findRunsReferencingCases":
+      return runRepo.findRunsReferencingPaths(
+        (message.payload?.paths as string[]) ?? [],
+      );
     case "initializeRunsRoot":
       return { runsRoot: await runRepo.initializeRunsRoot() };
     default:

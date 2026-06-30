@@ -17,6 +17,11 @@ import {
   toRepoRelativePath,
 } from "./workspace";
 import {
+  assertDeletableCasePath,
+  assertDeletableFolderPath,
+  assertDeletableProjectPath,
+} from "./caseDelete";
+import {
   parseCaseYaml,
   parseCaseYamlFrontMatterOnly,
   serializeCaseYaml,
@@ -371,5 +376,57 @@ export class CaseRepository {
     );
 
     return { file_path: norm };
+  }
+
+  async deleteCase(filePaths: string[]): Promise<{ deleted: string[] }> {
+    if (!filePaths.length) {
+      throw new Error("No case paths provided");
+    }
+    const resolved = await resolveCasesRootUri();
+    if (!resolved) {
+      throw new Error("No workspace folder open");
+    }
+
+    const deleted: string[] = [];
+    for (const raw of filePaths) {
+      const norm = assertDeletableCasePath(raw);
+      const fileUri = vscode.Uri.joinPath(resolved.folder.uri, norm);
+      try {
+        await vscode.workspace.fs.stat(fileUri);
+      } catch {
+        throw new Error(`Case not found: ${norm}`);
+      }
+      await vscode.workspace.fs.delete(fileUri);
+      deleted.push(norm);
+    }
+    return { deleted };
+  }
+
+  async deleteFolder(folderPath: string): Promise<{ folder_path: string }> {
+    const norm = assertDeletableFolderPath(folderPath);
+    const resolved = await resolveCasesRootUri();
+    if (!resolved) {
+      throw new Error("No workspace folder open");
+    }
+    const folderUri = vscode.Uri.joinPath(resolved.folder.uri, norm);
+    try {
+      const stat = await vscode.workspace.fs.stat(folderUri);
+      if (stat.type !== vscode.FileType.Directory) {
+        throw new Error(`Folder not found: ${norm}`);
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith("Folder not found")) {
+        throw e;
+      }
+      throw new Error(`Folder not found: ${norm}`);
+    }
+    await vscode.workspace.fs.delete(folderUri, { recursive: true });
+    return { folder_path: norm };
+  }
+
+  async deleteProject(projectPath: string): Promise<{ project_path: string }> {
+    const norm = assertDeletableProjectPath(projectPath);
+    await this.deleteFolder(norm);
+    return { project_path: norm };
   }
 }
