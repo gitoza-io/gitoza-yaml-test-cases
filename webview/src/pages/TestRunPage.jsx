@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Save } from "lucide-react";
+import { Plus, Save, Trash2 } from "lucide-react";
 import TestRepositoryThreeColumnLayout from "../components/TestRepositoryThreeColumnLayout";
-import RunSidebarList from "../components/RunSidebarList";
+import RepositoryFolderTree from "../components/RepositoryFolderTree";
 import RunPaginatedCaseList from "../components/RunPaginatedCaseList";
 import CaseDetailView from "../components/CaseDetailView";
 import DetailPanelEmpty from "../components/DetailPanelEmpty";
 import DetailPanelLoading from "../components/DetailPanelLoading";
 import AddRunCasesModal from "../components/AddRunCasesModal";
 import UnsavedChangesDialog from "../components/UnsavedChangesDialog";
+import ContextMenu from "../components/ContextMenu";
+import InlineRenameInput from "../components/InlineRenameInput";
+import TitleBarAddButton from "../components/TitleBarAddButton";
 import { useConfirm } from "../components/ConfirmProvider";
 import { RUNS_ROOT } from "../constants/runPaths";
 import { useRunResultDraft } from "../hooks/useRunResultDraft";
+import { useRunBrowseState } from "../hooks/useRunBrowseState";
 import {
   addRunCases,
   createRun,
@@ -23,9 +27,15 @@ import {
   saveRunResults,
 } from "../services/api";
 import { onCasesUpdated, onRunsUpdated } from "../api/vscodeApi";
-import { TestCaseIcon } from "../components/TestEntityIcons";
+import { TestCaseIcon, TestRunIcon } from "../components/TestEntityIcons";
 import { countResultsFromCases } from "../utils/applyPendingRunResults";
 import { browseColumnNoSelect } from "../utils/layoutClasses";
+import {
+  buildGroupedRunCaseListEntries,
+  buildUnifiedRunTree,
+  findRunFolderDisplayName,
+  parseRunTreePath,
+} from "../utils/runCaseTree";
 
 const ACTIVE_REPO = "vscode";
 
@@ -39,6 +49,7 @@ export default function TestRunPage({
   const confirm = useConfirm();
   const [runs, setRuns] = useState([]);
   const [selectedRunId, setSelectedRunId] = useState(null);
+  const [cachedRunDetails, setCachedRunDetails] = useState({});
   const [runDetailLoading, setRunDetailLoading] = useState(false);
   const [selectedCasePath, setSelectedCasePath] = useState(null);
   const [caseDetail, setCaseDetail] = useState(null);
@@ -47,6 +58,7 @@ export default function TestRunPage({
   const [showAddCasesModal, setShowAddCasesModal] = useState(false);
   const [caseListPage, setCaseListPage] = useState(1);
   const [unsavedDialog, setUnsavedDialog] = useState(null);
+  const [runContextMenu, setRunContextMenu] = useState(null);
 
   const isDirtyRef = useRef(false);
 
@@ -93,6 +105,7 @@ export default function TestRunPage({
       try {
         const detail = await getRunDetail(runId);
         resetFromServer(detail);
+        setCachedRunDetails((prev) => ({ ...prev, [runId]: detail }));
       } catch {
         resetFromServer(null);
       } finally {
@@ -162,6 +175,17 @@ export default function TestRunPage({
     };
   }, [selectedCasePath]);
 
+  useEffect(() => {
+    if (!runContextMenu) return;
+    const close = () => setRunContextMenu(null);
+    window.addEventListener("click", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [runContextMenu]);
+
   const runCases = useMemo(() => displayDetail?.cases ?? [], [displayDetail]);
 
   const displayRuns = useMemo(() => {
@@ -179,6 +203,49 @@ export default function TestRunPage({
         : r,
     );
   }, [runs, isDirty, selectedRunId, displayDetail]);
+
+  const runDetailsByRunId = useMemo(
+    () => ({
+      ...cachedRunDetails,
+      ...(selectedRunId && displayDetail ? { [selectedRunId]: displayDetail } : {}),
+    }),
+    [cachedRunDetails, selectedRunId, displayDetail],
+  );
+
+  const unifiedRunTree = useMemo(
+    () => buildUnifiedRunTree(displayRuns, runDetailsByRunId),
+    [displayRuns, runDetailsByRunId],
+  );
+
+  const {
+    selectedFolderPath,
+    expanded: folderExpanded,
+    setExpanded: setFolderExpanded,
+    handleSelectBrowseFolder,
+  } = useRunBrowseState({
+    tree: unifiedRunTree,
+    selectedRunId,
+    selectedCaseFilePath: selectedCasePath,
+    enabled: displayRuns.length > 0,
+  });
+
+  useEffect(() => {
+    setCaseListPage(1);
+  }, [selectedFolderPath]);
+
+  useEffect(() => {
+    if (!selectedFolderPath) return;
+    const parsed = parseRunTreePath(selectedFolderPath);
+    if (!parsed?.runId || parsed.runId === selectedRunId) return;
+    setSelectedRunId(parsed.runId);
+  }, [selectedFolderPath, selectedRunId]);
+
+  const folderScopedListEntries = useMemo(() => {
+    if (!selectedFolderPath) return null;
+    return buildGroupedRunCaseListEntries(runCases, unifiedRunTree, selectedFolderPath);
+  }, [selectedFolderPath, runCases, unifiedRunTree]);
+
+  const folderLabel = findRunFolderDisplayName(unifiedRunTree, selectedFolderPath);
 
   const existingRunPaths = useMemo(
     () => new Set(runCases.map((c) => c.file_path)),
@@ -224,13 +291,30 @@ export default function TestRunPage({
     setUnsavedDialog(null);
   }, []);
 
-  const handleSelectRun = useCallback(
-    (run) => {
-      const nextId = run?.run_id ?? null;
-      if (nextId === selectedRunId) return;
-      guardUnsaved(() => setSelectedRunId(nextId));
+  const handleSelectBrowseFolderWithRun = useCallback(
+    (path) => {
+      if (!path) return;
+      const parsed = parseRunTreePath(path);
+      if (!parsed?.runId) return;
+
+      const applySelection = () => {
+        handleSelectBrowseFolder(path);
+        if (parsed.runId !== selectedRunId) {
+          setSelectedRunId(parsed.runId);
+          setSelectedCasePath(null);
+        } else if (parsed.isRunRoot) {
+          setSelectedCasePath(null);
+        }
+        setCaseListPage(1);
+      };
+
+      if (parsed.runId !== selectedRunId) {
+        guardUnsaved(applySelection);
+      } else {
+        applySelection();
+      }
     },
-    [selectedRunId, guardUnsaved],
+    [handleSelectBrowseFolder, selectedRunId, guardUnsaved],
   );
 
   const handleCommitCreateRun = useCallback(
@@ -265,6 +349,12 @@ export default function TestRunPage({
         if (selectedRunId === runId) {
           setSelectedRunId(null);
         }
+        setCachedRunDetails((prev) => {
+          if (!prev[runId]) return prev;
+          const next = { ...prev };
+          delete next[runId];
+          return next;
+        });
         await loadRuns();
       };
       if (runId === selectedRunId && isDirtyRef.current) {
@@ -300,6 +390,7 @@ export default function TestRunPage({
         if (!selectedRunId) return;
         const detail = await addRunCases(selectedRunId, paths);
         resetFromServer(detail);
+        setCachedRunDetails((prev) => ({ ...prev, [selectedRunId]: detail }));
         setShowAddCasesModal(false);
         await loadRuns();
       };
@@ -316,6 +407,7 @@ export default function TestRunPage({
         if (!selectedRunId || !row?.file_path) return;
         const detail = await removeRunCase(selectedRunId, row.file_path);
         resetFromServer(detail);
+        setCachedRunDetails((prev) => ({ ...prev, [selectedRunId]: detail }));
         if (selectedCasePath === row.file_path) {
           setSelectedCasePath(null);
         }
@@ -355,27 +447,30 @@ export default function TestRunPage({
           No <code className="rounded bg-slate-200 px-1 dark:bg-slate-700">{RUNS_ROOT}</code>{" "}
           folder found. Create your first run to get started.
         </p>
-        <button
-          type="button"
-          onClick={() => setCreatingRun(true)}
-          className="mt-6 rounded-ui bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-        >
-          Create first run
-        </button>
         {creatingRun ? (
-          <div className="mt-4 w-full max-w-xs">
-            <RunSidebarList
-              runs={[]}
-              creatingRun
-              onCommitCreateRun={handleCommitCreateRun}
+          <div className="mt-6 flex w-full max-w-xs items-center gap-2">
+            <TestRunIcon className="h-4 w-4 shrink-0 text-emerald-500 dark:text-emerald-400" />
+            <InlineRenameInput
+              initialValue=""
+              placeholder="Run name…"
+              onCommit={handleCommitCreateRun}
             />
           </div>
-        ) : null}
+        ) : (
+          <button
+            type="button"
+            onClick={() => setCreatingRun(true)}
+            className="mt-6 rounded-ui bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          >
+            Create first run
+          </button>
+        )}
       </div>
     );
   }
 
   const selectedRun = displayRuns.find((r) => r.run_id === selectedRunId);
+  const listTitle = folderLabel ?? selectedRun?.title ?? selectedRun?.run_id ?? null;
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -385,22 +480,33 @@ export default function TestRunPage({
           listWidth: "testRun.col.listWidth",
         }}
         treeColumn={
-          <RunSidebarList
-            runs={displayRuns}
-            selectedRunId={selectedRunId}
-            onSelectRun={handleSelectRun}
-            creatingRun={creatingRun}
-            onStartCreateRun={() => setCreatingRun(true)}
-            onCommitCreateRun={handleCommitCreateRun}
-            onDeleteRun={handleDeleteRun}
-          />
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="flex shrink-0 items-center justify-end border-b border-slate-200 px-2 py-1 dark:border-slate-700">
+              <TitleBarAddButton tooltip="New run" onClick={() => setCreatingRun(true)} />
+            </div>
+            <RepositoryFolderTree
+              tree={unifiedRunTree}
+              selectedFolderPath={selectedFolderPath}
+              onSelectFolder={handleSelectBrowseFolderWithRun}
+              expanded={folderExpanded}
+              onExpandedChange={setFolderExpanded}
+              creatingRun={creatingRun}
+              onCommitCreateRun={handleCommitCreateRun}
+              onContextMenuRun={(node, e) => {
+                if (!node?.run_id) return;
+                e.preventDefault();
+                setRunContextMenu({ x: e.clientX, y: e.clientY, runId: node.run_id });
+              }}
+              editorLocked
+            />
+          </div>
         }
         caseListColumn={
           <div className="flex h-full min-h-0 flex-col overflow-hidden">
             <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 px-2 py-2 dark:border-slate-700">
               <div className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium text-slate-800 dark:text-slate-200">
-                  {selectedRun?.title || selectedRun?.run_id || "Cases"}
+                  {listTitle || "Cases"}
                 </span>
                 {isDirty ? (
                   <span className="text-xs text-amber-600 dark:text-amber-400">Unsaved changes</span>
@@ -437,18 +543,24 @@ export default function TestRunPage({
               </div>
             </div>
             <RunPaginatedCaseList
-              cases={runCases}
+              cases={[]}
+              listEntries={folderScopedListEntries}
               page={caseListPage}
               onPageChange={setCaseListPage}
               selectedCaseFilePath={selectedCasePath}
               onSelectCase={(row) => setSelectedCasePath(row?.file_path ?? null)}
-              folderPath={selectedRunId}
+              folderPath={selectedFolderPath}
+              listTitle={listTitle}
               showNoRunWhenEmpty
+              showNoFolderWhenEmpty
               noRunMessage="Select a run"
+              noFolderMessage="Select a project or suite"
               emptyMessage={
                 runDetailLoading
                   ? "Loading…"
-                  : "No cases in this run. Use Add cases to include tests from the repository."
+                  : selectedFolderPath
+                    ? "No cases in this folder"
+                    : "No cases in this run. Use Add cases to include tests from the repository."
               }
               loading={runDetailLoading}
               defaultRunId={selectedRunId}
@@ -484,6 +596,25 @@ export default function TestRunPage({
           existingPaths={existingRunPaths}
           onConfirm={handleAddCases}
           onClose={() => setShowAddCasesModal(false)}
+        />
+      ) : null}
+      {runContextMenu ? (
+        <ContextMenu
+          open
+          x={runContextMenu.x}
+          y={runContextMenu.y}
+          onClose={() => setRunContextMenu(null)}
+          items={[
+            {
+              label: "Delete run",
+              icon: Trash2,
+              danger: true,
+              onClick: () => {
+                handleDeleteRun(runContextMenu.runId);
+                setRunContextMenu(null);
+              },
+            },
+          ]}
         />
       ) : null}
       <UnsavedChangesDialog
