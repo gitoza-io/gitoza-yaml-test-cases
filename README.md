@@ -4,6 +4,12 @@ Manage manual test cases and test runs as YAML in your workspace — browse suit
 
 Cases and runs live under `.gitoza-lite/test/cases/` and `.gitoza-lite/test/run/` as plain files in your repo.
 
+## Demo
+
+Browse projects and suites in the three-column Test Repository, create a case, execute a manual test run (Pass / Fail / Skip), and see cases and runs saved as YAML on disk.
+
+<video src="https://raw.githubusercontent.com/gitoza-io/gitoza-yaml-test-cases/main/media/vscode-extension-gitoza-readme.mp4" poster="https://raw.githubusercontent.com/gitoza-io/gitoza-yaml-test-cases/main/media/screenshots/test-repository-ui.png" controls></video>
+
 ## AI-friendly workflow
 
 Test cases are plain YAML in your repo — easy for AI assistants (Cursor, Copilot, ChatGPT, etc.) to read and write. Use your editor or chat to draft cases, then browse, review, and save them in a structured UI. No built-in AI is required.
@@ -31,28 +37,6 @@ params:
 ## Expected result
 User is redirected to the dashboard.
 ```
-
-## Screenshots
-
-### Test Repository
-
-Browse projects, suites, and cases in a three-column editor tab.
-
-![Test Repository UI](https://raw.githubusercontent.com/gitoza-io/gitoza-yaml-test-cases/main/media/screenshots/test-repository-ui.png)
-
-Cases are stored as plain YAML on disk:
-
-![Case YAML file](https://raw.githubusercontent.com/gitoza-io/gitoza-yaml-test-cases/main/media/screenshots/case-yaml.png)
-
-### Test Run
-
-Create runs, add cases from the repository, and mark Pass / Fail / Skip.
-
-![Test Run UI](https://raw.githubusercontent.com/gitoza-io/gitoza-yaml-test-cases/main/media/screenshots/test-run-ui.png)
-
-Each run is a single YAML file listing case paths and results:
-
-![Run YAML file](https://raw.githubusercontent.com/gitoza-io/gitoza-yaml-test-cases/main/media/screenshots/run-yaml.png)
 
 ## Getting started
 
