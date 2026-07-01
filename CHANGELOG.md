@@ -7,9 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-01
+
+### Added
+
+- **Delete** test cases, suites (folders), and projects — with confirmation and warnings when test runs still reference deleted cases
+- Test Run **context menu** — rename and delete runs from the folder tree
+- README **demo video** — `<video>` walkthrough on the Marketplace listing
+
+### Fixed
+
+- **Test Run case list** — cases under `.gitoza-lite/test/cases/` now appear in the run browser (previously only Desktop `.gitoza/test/cases/` paths were recognized)
+- **Run title** — YAML `title` in run front matter displays correctly instead of "Unnamed run"
+
 ### Changed
 
-- Activity Bar icon now opens or focuses the Gitoza Test Repository editor tab instead of showing a sidebar launcher button
+- Test Run UI — unified three-column browse (runs, cases, detail) aligned with Test Repository layout; removed separate run sidebar list
+- Activity Bar icon opens or focuses the Gitoza Test Repository editor tab instead of showing a sidebar launcher button
+- Export hierarchy reuses shared case-path parsing for `.gitoza-lite` runs
 
 ## [0.1.1] - 2026-06-30
 
@@ -29,5 +44,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Activity Bar launcher and **Gitoza: Open Test Repository** command
 - Pending run-result updates with unsaved-changes prompt before save
 
+[0.2.0]: https://github.com/gitoza-io/gitoza-yaml-test-cases/releases/tag/v0.2.0
 [0.1.1]: https://github.com/gitoza-io/gitoza-yaml-test-cases/releases/tag/v0.1.1
 [0.1.0]: https://github.com/gitoza-io/gitoza-yaml-test-cases/releases/tag/v0.1.0

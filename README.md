@@ -8,7 +8,7 @@ Cases and runs live under `.gitoza-lite/test/cases/` and `.gitoza-lite/test/run/
 
 Browse projects and suites in the three-column Test Repository, create a case, execute a manual test run (Pass / Fail / Skip), and see cases and runs saved as YAML on disk.
 
-<video src="https://raw.githubusercontent.com/gitoza-io/gitoza-yaml-test-cases/main/media/vscode-extension-gitoza-readme.mp4" poster="https://raw.githubusercontent.com/gitoza-io/gitoza-yaml-test-cases/main/media/screenshots/test-repository-ui.png" controls></video>
+<video src="https://raw.githubusercontent.com/gitoza-io/gitoza-yaml-test-cases/main/media/gitoza-vscode-extension.mp4" poster="https://raw.githubusercontent.com/gitoza-io/gitoza-yaml-test-cases/main/media/screenshots/test-repository-ui.png" controls></video>
 
 ## AI-friendly workflow
 
