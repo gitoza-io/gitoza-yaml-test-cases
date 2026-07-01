@@ -9,7 +9,7 @@ import {
   patchFolderTreeForAdditions,
 } from "./patchRunFolderTreeStats";
 
-const PROJECT = ".gitoza/test/cases/auth";
+const PROJECT = ".gitoza-lite/test/cases/auth";
 const SUITE = `${PROJECT}/login`;
 
 function makeFolderTree() {
@@ -199,7 +199,7 @@ describe("patchFolderTreeForAdditions", () => {
 
   it("reports missing project prefix when tree has no matching node", () => {
     const tree = makeFolderTree();
-    const otherProject = ".gitoza/test/cases/billing";
+    const otherProject = ".gitoza-lite/test/cases/billing";
     const { tree: next, missingPrefixes } = patchFolderTreeForAdditions(tree, [
       { file_path: `${otherProject}/case.yaml`, result: "pending" },
     ]);

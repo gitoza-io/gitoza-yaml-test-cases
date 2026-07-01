@@ -17,12 +17,12 @@ const FOLDER_TREE = [
     children: [
       {
         name: "auth.gitoza.test",
-        directory_path: "__run__/run-1/.gitoza/test/cases/auth",
+        directory_path: "__run__/run-1/.gitoza-lite/test/cases/auth",
         is_project: true,
         children: [
           {
             name: "login",
-            directory_path: "__run__/run-1/.gitoza/test/cases/auth/login",
+            directory_path: "__run__/run-1/.gitoza-lite/test/cases/auth/login",
             children: [],
           },
         ],
@@ -50,7 +50,7 @@ function run2TreeFromRun1(run1Tree = FOLDER_TREE) {
   ];
 }
 
-const RUN2_SUITE_PATH = "__run__/run-2/.gitoza/test/cases/auth/login";
+const RUN2_SUITE_PATH = "__run__/run-2/.gitoza-lite/test/cases/auth/login";
 
 let container = null;
 let root = null;
@@ -114,9 +114,9 @@ describe("useRunBrowseState", () => {
       lastFolderStorageKey: "test.run.folder",
     });
     act(() => {
-      h.current.handleSelectBrowseFolder("__run__/run-1/.gitoza/test/cases/auth/login");
+      h.current.handleSelectBrowseFolder("__run__/run-1/.gitoza-lite/test/cases/auth/login");
     });
-    expect(h.current.selectedFolderPath).toBe("__run__/run-1/.gitoza/test/cases/auth/login");
+    expect(h.current.selectedFolderPath).toBe("__run__/run-1/.gitoza-lite/test/cases/auth/login");
 
     act(() => {
       h.rerender({
@@ -136,7 +136,7 @@ describe("useRunBrowseState", () => {
         lastFolderStorageKey: "test.run.folder",
       });
     });
-    expect(h.current.selectedFolderPath).toBe("__run__/run-1/.gitoza/test/cases/auth/login");
+    expect(h.current.selectedFolderPath).toBe("__run__/run-1/.gitoza-lite/test/cases/auth/login");
   });
 
   it("keeps suite folder when switching selectedRunId via cross-run click", () => {
@@ -150,9 +150,9 @@ describe("useRunBrowseState", () => {
       lastFolderStorageKey: "test.run.folder",
     });
     act(() => {
-      h.current.handleSelectBrowseFolder("__run__/run-1/.gitoza/test/cases/auth/login");
+      h.current.handleSelectBrowseFolder("__run__/run-1/.gitoza-lite/test/cases/auth/login");
     });
-    expect(h.current.selectedFolderPath).toBe("__run__/run-1/.gitoza/test/cases/auth/login");
+    expect(h.current.selectedFolderPath).toBe("__run__/run-1/.gitoza-lite/test/cases/auth/login");
 
     act(() => {
       h.current.handleSelectBrowseFolder(RUN2_SUITE_PATH);
@@ -214,7 +214,7 @@ describe("useRunBrowseState", () => {
       h.rerender({
         tree: FOLDER_TREE,
         selectedRunId: "run-1",
-        selectedCaseFilePath: "__run__/run-1/.gitoza/test/cases/auth/login/case-1.yaml",
+        selectedCaseFilePath: "__run__/run-1/.gitoza-lite/test/cases/auth/login/case-1.yaml",
         enabled: true,
         lastFolderStorageKey: "test.run.folder",
       });
@@ -230,9 +230,9 @@ describe("useRunBrowseState", () => {
       lastFolderStorageKey: "test.run.folder",
     });
     act(() => {
-      h.current.handleSelectBrowseFolder("__run__/run-1/.gitoza/test/cases/auth/login");
+      h.current.handleSelectBrowseFolder("__run__/run-1/.gitoza-lite/test/cases/auth/login");
     });
-    expect(h.current.selectedFolderPath).toBe("__run__/run-1/.gitoza/test/cases/auth/login");
+    expect(h.current.selectedFolderPath).toBe("__run__/run-1/.gitoza-lite/test/cases/auth/login");
 
     act(() => {
       h.rerender({

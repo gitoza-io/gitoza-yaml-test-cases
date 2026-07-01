@@ -15,7 +15,7 @@ import {
   runTreePathForRunId,
 } from "./runCaseTree";
 
-const PROJECT = ".gitoza/test/cases/auth";
+const PROJECT = ".gitoza-lite/test/cases/auth";
 const SUITE = `${PROJECT}/login`;
 
 describe("buildRunCaseTree", () => {
@@ -438,5 +438,47 @@ describe("buildUnifiedRunTreeFromFolderTrees", () => {
     expect(tree[0].case_count).toBe(2);
     expect(tree[0].children).toHaveLength(1);
     expect(tree[0].children[0].directory_path).toBe(`${runTreePathForRunId("run-a")}/${PROJECT}`);
+  });
+});
+
+describe("gitoza-lite run case paths", () => {
+  const runId = "platform-qa-full-run";
+  const liteProject = ".gitoza-lite/test/cases/platform_qa";
+  const liteSuite = `${liteProject}/login`;
+  const runCases = [
+    { file_path: `${liteSuite}/a.yaml`, case_id: "TC-1", title: "A", result: "passed" },
+    { file_path: `${liteSuite}/b.yaml`, case_id: "TC-2", title: "B", result: "failed" },
+  ];
+
+  it("builds folder tree and grouped list entries for lite case paths", () => {
+    const folderTree = buildRunFolderTree(runCases);
+    expect(folderTree).toHaveLength(1);
+    expect(folderTree[0].directory_path).toBe(liteProject);
+
+    const unified = buildUnifiedRunTree(
+      [{ run_id: runId, title: "Platform QA full run", case_count: 2 }],
+      { [runId]: { title: "Platform QA full run", cases: runCases } },
+    );
+    expect(unified[0].display_name).toBe("Platform QA full run");
+    expect(unified[0].children).toHaveLength(1);
+
+    const entries = buildGroupedRunCaseListEntries(
+      runCases,
+      unified,
+      runTreePathForRunId(runId),
+    );
+    expect(entries.filter((e) => e.type === "case").map((e) => e.item.case_id)).toEqual([
+      "TC-1",
+      "TC-2",
+    ]);
+  });
+
+  it("shows run title from RunDetail-shaped cache instead of Unnamed run", () => {
+    const tree = buildUnifiedRunTree(
+      [{ run_id: runId, title: "Platform QA" }],
+      { [runId]: { title: "Platform QA", cases: runCases } },
+    );
+    expect(tree[0].display_name).toBe("Platform QA");
+    expect(tree[0].name).toBe("Platform QA");
   });
 });

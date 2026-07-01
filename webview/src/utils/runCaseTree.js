@@ -1,3 +1,4 @@
+import { CASES_ROOT } from "../constants/casePaths";
 import { compareCasesByCaseId } from "./exportHierarchy";
 import {
   findFolderNode,
@@ -6,6 +7,8 @@ import {
   getDirectCasesInFolder,
   getRecursiveCasesInFolder,
 } from "./caseTree";
+
+const LEGACY_CASES_ROOT = ".gitoza/test/cases";
 
 export const RUN_TREE_PREFIX = "__run__";
 
@@ -60,7 +63,15 @@ function prefixRunFolderTreeNodes(folderTree, runId) {
 }
 
 function runDisplayName(run, detail) {
-  return (detail?.run?.name ?? run?.name ?? "").trim() || "Unnamed run";
+  const title = (
+    detail?.title ??
+    detail?.run?.title ??
+    detail?.run?.name ??
+    run?.title ??
+    run?.name ??
+    ""
+  ).trim();
+  return title || "Unnamed run";
 }
 
 /**
@@ -108,12 +119,22 @@ function runCaseCount(run, detail, cases) {
  * Each case has file_path, case_id, title, result; we derive project/suite from file_path.
  */
 
-export function projectFromFilePath(filePath) {
+function projectPathFromCasesRoot(filePath, casesRoot) {
   const p = (filePath || "").replace(/\\/g, "/");
-  if (!p.startsWith(".gitoza/test/cases/")) return "";
+  const prefix = `${casesRoot}/`;
+  if (!p.startsWith(prefix)) return "";
   const parts = p.split("/");
-  if (parts.length >= 4) return parts.slice(0, 4).join("/");
+  const rootParts = casesRoot.split("/").length;
+  const projectEnd = rootParts + 1;
+  if (parts.length >= projectEnd) return parts.slice(0, projectEnd).join("/");
   return "";
+}
+
+export function projectFromFilePath(filePath) {
+  return (
+    projectPathFromCasesRoot(filePath, CASES_ROOT) ||
+    projectPathFromCasesRoot(filePath, LEGACY_CASES_ROOT)
+  );
 }
 
 function folderFromFilePath(filePath) {
@@ -553,6 +574,18 @@ export function buildGroupedRunCaseListEntries(runCases, unifiedFolderTree, dire
 
   const entries = [];
   walkRunFolderNodeForGroupedList(node, runCases, unifiedFolderTree, entries, 0, mapCase);
+  if (
+    entries.length === 0 &&
+    (runCases?.length ?? 0) > 0 &&
+    parseRunTreePath(directoryPath)?.isRunRoot
+  ) {
+    return getRunCasesForFolderSelection(runCases, unifiedFolderTree, directoryPath).map(
+      (item) => ({
+        type: "case",
+        item,
+      }),
+    );
+  }
   return entries;
 }
 

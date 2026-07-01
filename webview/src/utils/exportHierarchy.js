@@ -3,13 +3,7 @@
  * Built from flat case rows using `file_path` (same rules as the repository tree).
  */
 
-function projectFromFilePath(filePath) {
-  const p = (filePath || "").replace(/\\/g, "/");
-  if (!p.startsWith(".gitoza/test/cases/")) return "";
-  const parts = p.split("/");
-  if (parts.length >= 4) return parts.slice(0, 4).join("/");
-  return "";
-}
+import { projectFromFilePath } from "./runCaseTree";
 
 function folderFromFilePath(filePath) {
   const p = (filePath || "").replace(/\\/g, "/");
