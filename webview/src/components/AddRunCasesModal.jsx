@@ -10,6 +10,7 @@ import {
   toggleProjectSelection,
   toggleSuiteSelection,
 } from "../utils/casePickerSelection";
+import { patchRepositoryTreeForActiveCaseRemovals } from "../utils/patchRepositoryTree";
 
 const ACTIVE_REPO = "vscode";
 
@@ -30,19 +31,35 @@ export default function AddRunCasesModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  const normalizedExistingPaths = useMemo(() => {
+    const next = new Set();
+    for (const p of existingPaths) {
+      const norm = normalizeCaseFilePath(p);
+      if (norm) next.add(norm);
+    }
+    return next;
+  }, [existingPaths]);
+
+  const pickerTree = useMemo(() => {
+    if (!repositoryTree?.length) return [];
+    const paths = [...normalizedExistingPaths];
+    if (!paths.length) return repositoryTree;
+    return patchRepositoryTreeForActiveCaseRemovals(repositoryTree, paths).tree;
+  }, [repositoryTree, normalizedExistingPaths]);
+
   const {
     selectedFolderPath,
     expanded,
     setExpanded,
     handleSelectBrowseFolder,
   } = usePickerBrowseState({
-    tree: repositoryTree,
+    tree: pickerTree,
     enabled: true,
   });
 
   const filterPath = useCallback(
-    (filePath) => !existingPaths.has(normalizeCaseFilePath(filePath)),
-    [existingPaths],
+    (filePath) => !normalizedExistingPaths.has(normalizeCaseFilePath(filePath)),
+    [normalizedExistingPaths],
   );
 
   useEffect(() => {
@@ -134,6 +151,8 @@ export default function AddRunCasesModal({
     }
   };
 
+  const nothingLeftToAdd = projectsReady && pickerTree.length === 0;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="flex h-[min(720px,90vh)] w-full max-w-4xl flex-col overflow-hidden rounded-ui border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
@@ -157,38 +176,44 @@ export default function AddRunCasesModal({
           </button>
         </div>
 
-        <div className="flex min-h-0 flex-1 overflow-hidden">
-          <div className="flex w-[220px] shrink-0 flex-col border-r border-slate-200 dark:border-slate-700">
-            <RepositoryFolderTree
-              tree={repositoryTree}
-              projectsReady={projectsReady}
-              treeStructureLoadingPrefixes={treeStructureLoadingPrefixes}
-              selectedFolderPath={selectedFolderPath}
-              onSelectFolder={handleSelectBrowseFolder}
-              expanded={expanded}
-              onExpandedChange={setExpanded}
-              pickerMode
-              pickerRows={pickerRows}
-              selectedFilePaths={selectedFilePaths}
-              onToggleProject={handleToggleProject}
-              onToggleSuite={handleToggleSuite}
-              filterPath={filterPath}
-            />
+        {nothingLeftToAdd ? (
+          <div className="flex min-h-0 flex-1 items-center justify-center px-6 py-10 text-center text-sm text-slate-600 dark:text-slate-400">
+            All cases in the repository are already in this run.
           </div>
-          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-            <RepositoryVirtualCaseList
-              cases={pickerRows}
-              loading={casesLoading}
-              selectedCaseFilePath={null}
-              folderPath={selectedFolderPath}
-              showNoFolderWhenEmpty
-              pickerMode
-              selectedFilePaths={selectedFilePaths}
-              onToggleCase={handleToggleCase}
-              filterPath={filterPath}
-            />
+        ) : (
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            <div className="flex w-[220px] shrink-0 flex-col border-r border-slate-200 dark:border-slate-700">
+              <RepositoryFolderTree
+                tree={pickerTree}
+                projectsReady={projectsReady}
+                treeStructureLoadingPrefixes={treeStructureLoadingPrefixes}
+                selectedFolderPath={selectedFolderPath}
+                onSelectFolder={handleSelectBrowseFolder}
+                expanded={expanded}
+                onExpandedChange={setExpanded}
+                pickerMode
+                pickerRows={pickerRows}
+                selectedFilePaths={selectedFilePaths}
+                onToggleProject={handleToggleProject}
+                onToggleSuite={handleToggleSuite}
+                filterPath={filterPath}
+              />
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+              <RepositoryVirtualCaseList
+                cases={pickerRows}
+                loading={casesLoading}
+                selectedCaseFilePath={null}
+                folderPath={selectedFolderPath}
+                showNoFolderWhenEmpty
+                pickerMode
+                selectedFilePaths={selectedFilePaths}
+                onToggleCase={handleToggleCase}
+                filterPath={filterPath}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {error ? (
           <p className="shrink-0 border-t border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
@@ -206,7 +231,7 @@ export default function AddRunCasesModal({
           </button>
           <button
             type="button"
-            disabled={selectedFilePaths.size === 0 || submitting}
+            disabled={selectedFilePaths.size === 0 || submitting || nothingLeftToAdd}
             onClick={() => void handleSubmit()}
             className="rounded-ui bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
           >

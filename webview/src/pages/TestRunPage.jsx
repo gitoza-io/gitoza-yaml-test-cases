@@ -37,6 +37,7 @@ import {
   parseRunTreePath,
 } from "../utils/runCaseTree";
 import { displayNameFromSanitized, sanitizeNameForPath } from "../utils/sanitize";
+import { normalizeCaseFilePath } from "../utils/casePickerSelection";
 
 const ACTIVE_REPO = "vscode";
 
@@ -249,7 +250,12 @@ export default function TestRunPage({
   const folderLabel = findRunFolderDisplayName(unifiedRunTree, selectedFolderPath);
 
   const existingRunPaths = useMemo(
-    () => new Set(runCases.map((c) => c.file_path)),
+    () =>
+      new Set(
+        runCases
+          .map((c) => normalizeCaseFilePath(c.file_path))
+          .filter(Boolean),
+      ),
     [runCases],
   );
 

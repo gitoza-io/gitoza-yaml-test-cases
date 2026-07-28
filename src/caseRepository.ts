@@ -94,7 +94,8 @@ export class CaseRepository {
         display_name: displayName,
         directory_path: childRel,
         is_project: isProject,
-        case_count: caseCount + children.reduce((s, c) => s + c.case_count, 0),
+        // countYamlFiles is already recursive; do not also sum children.case_count
+        case_count: caseCount,
         children: children.length > 0 ? children : undefined,
       });
     }

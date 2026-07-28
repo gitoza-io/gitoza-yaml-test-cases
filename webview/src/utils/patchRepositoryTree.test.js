@@ -293,4 +293,26 @@ describe("patchRepositoryTreeForActiveCaseRemovals", () => {
     ]);
     expect(next).toEqual([]);
   });
+
+  it("prunes emptied suite but keeps sibling suite with remaining cases", () => {
+    const siblingPath = `${PROJECT}/billing_suite`;
+    const tree = makeTreeWithCounts(3, 2);
+    tree[0].children.push({
+      name: "billing_suite",
+      display_name: "billing suite",
+      directory_path: siblingPath,
+      is_project: false,
+      case_count: 1,
+      children: [],
+    });
+    const { tree: next } = patchRepositoryTreeForActiveCaseRemovals(tree, [
+      `${SUITE}/case_a.yaml`,
+      `${SUITE}/case_b.yaml`,
+    ]);
+    expect(next).toHaveLength(1);
+    expect(next[0].case_count).toBe(1);
+    expect(next[0].children).toHaveLength(1);
+    expect(next[0].children[0].directory_path).toBe(siblingPath);
+    expect(next[0].children[0].case_count).toBe(1);
+  });
 });

@@ -40,6 +40,23 @@ export function usePickerBrowseState({
     [onFolderExpand],
   );
 
+  // Clear or retarget browse selection when the folder disappears from a pruned tree.
+  useEffect(() => {
+    if (!enabled || !selectedFolderPath) return;
+    if (!tree?.length) {
+      setSelectedFolderPath(null);
+      return;
+    }
+    if (!findFolderNode(tree, selectedFolderPath)) {
+      const first = tree[0]?.directory_path ?? null;
+      if (first) {
+        handleSelectBrowseFolder(first);
+      } else {
+        setSelectedFolderPath(null);
+      }
+    }
+  }, [enabled, tree, selectedFolderPath, handleSelectBrowseFolder]);
+
   useEffect(() => {
     if (!enabled || didInitialFolderRef.current || searchOpen) return;
     if (selectedFolderPath) {
