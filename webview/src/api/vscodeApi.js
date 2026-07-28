@@ -175,9 +175,8 @@ export const deleteCase = (filePaths) =>
 export const renameCase = async () => {
   throw new Error("Rename is not available in the VS Code preview extension.");
 };
-export const renameFolder = async () => {
-  throw new Error("Rename is not available in the VS Code preview extension.");
-};
+export const renameFolder = (folderPath, name) =>
+  request("renameFolder", { folderPath, name });
 export const deleteFolder = (folderPath) =>
   request("deleteFolder", { folderPath });
 export const deleteProject = (projectPath) =>

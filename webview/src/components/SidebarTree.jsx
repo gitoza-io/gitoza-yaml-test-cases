@@ -109,9 +109,9 @@ function SidebarTree({
 
   const handleRenameCommit = (folderPath, newName) => {
     setRenamingPath(null);
-    if (newName && onRenameFolder) {
-      onRenameFolder(folderPath, newName);
-    }
+    if (newName == null) return;
+    if (!onRenameFolder) return;
+    onRenameFolder(folderPath, newName);
   };
 
   const handleCreateFolderCommit = (parentPath, folderName) => {
@@ -161,8 +161,12 @@ function SidebarTree({
           items={[
             { icon: FilePlus2, label: "New Test Case", onClick: handleContextNewCase },
             { icon: FolderPlus, label: "New Test Suite", onClick: handleContextNewSuite },
-            { type: "separator" },
-            { icon: Pencil, label: "Rename", onClick: handleContextRename },
+            ...(onRenameFolder
+              ? [
+                  { type: "separator" },
+                  { icon: Pencil, label: "Rename", onClick: handleContextRename },
+                ]
+              : []),
             ...(!contextMenu.node?.is_project && onDeleteFolder
               ? [
                   { type: "separator" },

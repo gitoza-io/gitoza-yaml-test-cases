@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   casePathMatchesDeleteTargets,
   findMatchingRunReferences,
+  remapPathUnderPrefix,
+  remapRunCasePaths,
 } from "./runReferenceScan";
 
 const CASE_A = ".gitoza-lite/test/cases/p/s/login.yaml";
 const CASE_B = ".gitoza-lite/test/cases/p/s/logout.yaml";
 const SUITE = ".gitoza-lite/test/cases/p/s";
+const SUITE_RENAMED = ".gitoza-lite/test/cases/p/system-test";
 
 describe("casePathMatchesDeleteTargets", () => {
   it("matches exact case path", () => {
@@ -59,5 +62,32 @@ describe("findMatchingRunReferences", () => {
 
   it("returns empty when no runs match", () => {
     expect(findMatchingRunReferences([], [CASE_A])).toEqual([]);
+  });
+});
+
+describe("remapPathUnderPrefix", () => {
+  it("remaps folder and descendant case paths", () => {
+    expect(remapPathUnderPrefix(SUITE, SUITE, SUITE_RENAMED)).toBe(SUITE_RENAMED);
+    expect(remapPathUnderPrefix(CASE_A, SUITE, SUITE_RENAMED)).toBe(
+      `${SUITE_RENAMED}/login.yaml`,
+    );
+  });
+
+  it("leaves unrelated paths unchanged", () => {
+    expect(remapPathUnderPrefix(CASE_A, `${SUITE}/other`, SUITE_RENAMED)).toBe(CASE_A);
+  });
+});
+
+describe("remapRunCasePaths", () => {
+  it("rewrites matching cases and returns null when unchanged", () => {
+    const cases = [
+      { path: CASE_A, result: "pending" as const },
+      { path: ".gitoza-lite/test/cases/p/other/x.yaml", result: "passed" as const },
+    ];
+    const remapped = remapRunCasePaths(cases, SUITE, SUITE_RENAMED);
+    expect(remapped).not.toBeNull();
+    expect(remapped?.[0].path).toBe(`${SUITE_RENAMED}/login.yaml`);
+    expect(remapped?.[1].path).toBe(cases[1].path);
+    expect(remapRunCasePaths(cases, `${SUITE}/missing`, SUITE_RENAMED)).toBeNull();
   });
 });

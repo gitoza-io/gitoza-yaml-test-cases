@@ -23,6 +23,7 @@ import {
 import { applyResultUpdates } from "./runResultUpdates";
 import {
   findMatchingRunReferences,
+  remapRunCasePaths,
   type RunReferenceMatch,
 } from "./runReferenceScan";
 
@@ -352,5 +353,57 @@ export class RunRepository {
     }
 
     return { runs: findMatchingRunReferences(runs, paths) };
+  }
+
+  /**
+   * Rewrite case paths in all run files that live under `oldPrefix` to `newPrefix`.
+   */
+  async remapCasePathsPrefix(
+    oldPrefix: string,
+    newPrefix: string,
+  ): Promise<{ updated_runs: number }> {
+    const oldNorm = normalizePath(oldPrefix).replace(/\/+$/, "");
+    const newNorm = normalizePath(newPrefix).replace(/\/+$/, "");
+    if (!oldNorm || !newNorm || oldNorm === newNorm) {
+      return { updated_runs: 0 };
+    }
+
+    const resolved = await resolveRunsRootUri();
+    if (!resolved) {
+      return { updated_runs: 0 };
+    }
+
+    let entries: [string, vscode.FileType][];
+    try {
+      await vscode.workspace.fs.stat(resolved.runsRootUri);
+      entries = await vscode.workspace.fs.readDirectory(resolved.runsRootUri);
+    } catch {
+      return { updated_runs: 0 };
+    }
+
+    let updated = 0;
+    for (const [name, type] of entries) {
+      if (type !== vscode.FileType.File || !/\.ya?ml$/i.test(name)) {
+        continue;
+      }
+      const fileRel = joinRepoPath(RUNS_ROOT, name);
+      try {
+        const fileUri = vscode.Uri.joinPath(resolved.folder.uri, fileRel);
+        const bytes = await vscode.workspace.fs.readFile(fileUri);
+        const content = Buffer.from(bytes).toString("utf8");
+        const parsed = parseRunYaml(content);
+        if (!parsed) continue;
+        const remapped = remapRunCasePaths(parsed.cases, oldNorm, newNorm);
+        if (!remapped) continue;
+        await this.writeRunFile(resolved, fileRel, {
+          title: parsed.title,
+          cases: remapped,
+        });
+        updated += 1;
+      } catch {
+        // skip unreadable / unwritable
+      }
+    }
+    return { updated_runs: updated };
   }
 }

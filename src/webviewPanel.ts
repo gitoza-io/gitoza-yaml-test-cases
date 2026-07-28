@@ -101,6 +101,16 @@ async function handleWebviewRequest(
       return caseRepo.deleteFolder(String(message.payload?.folderPath ?? ""));
     case "deleteProject":
       return caseRepo.deleteProject(String(message.payload?.projectPath ?? ""));
+    case "renameFolder": {
+      const result = await caseRepo.renameFolder(
+        String(message.payload?.folderPath ?? ""),
+        String(message.payload?.name ?? ""),
+      );
+      if (result.old_path !== result.new_path) {
+        await runRepo.remapCasePathsPrefix(result.old_path, result.new_path);
+      }
+      return result;
+    }
     case "findRunsReferencingCases":
       return runRepo.findRunsReferencingPaths(
         (message.payload?.paths as string[]) ?? [],

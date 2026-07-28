@@ -265,6 +265,63 @@ export class CaseRepository {
     return { directory_path: childRel };
   }
 
+  async renameFolder(
+    folderPath: string,
+    newName: string,
+  ): Promise<{ old_path: string; new_path: string; name: string }> {
+    const oldPath = assertDeletableFolderPath(folderPath);
+    const name = sanitizeNameForPath(newName);
+    if (!isValidName(name)) {
+      throw new Error(
+        "Invalid folder name. Use only letters, numbers, underscores, and hyphens.",
+      );
+    }
+
+    const slash = oldPath.lastIndexOf("/");
+    const parent = slash >= 0 ? oldPath.slice(0, slash) : "";
+    if (!parent) {
+      throw new Error("Cannot rename folder without a parent path");
+    }
+    const newPath = joinRepoPath(parent, name);
+    if (newPath === oldPath) {
+      return { old_path: oldPath, new_path: newPath, name };
+    }
+
+    assertUnderCasesRoot(newPath);
+
+    const resolved = await resolveCasesRootUri();
+    if (!resolved) {
+      throw new Error("No workspace folder open");
+    }
+
+    const oldUri = vscode.Uri.joinPath(resolved.folder.uri, oldPath);
+    const newUri = vscode.Uri.joinPath(resolved.folder.uri, newPath);
+
+    try {
+      const stat = await vscode.workspace.fs.stat(oldUri);
+      if (stat.type !== vscode.FileType.Directory) {
+        throw new Error(`Folder not found: ${oldPath}`);
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith("Folder not found")) {
+        throw e;
+      }
+      throw new Error(`Folder not found: ${oldPath}`);
+    }
+
+    try {
+      await vscode.workspace.fs.stat(newUri);
+      throw new Error(`Folder '${name}' already exists.`);
+    } catch (e) {
+      if (e instanceof Error && e.message.includes("already exists")) {
+        throw e;
+      }
+    }
+
+    await vscode.workspace.fs.rename(oldUri, newUri);
+    return { old_path: oldPath, new_path: newPath, name };
+  }
+
   async createCase(
     payload: CreateTestCasePayload,
   ): Promise<{ file_path: string; case_id: string }> {

@@ -49,6 +49,10 @@ describe("computeRenamedFolderPath", () => {
     expect(computeRenamedFolderPath(SUITE, "sign_in")).toBe(`${PROJECT}/sign_in`);
   });
 
+  it("uses hyphenated segment for spaced rename target", () => {
+    expect(computeRenamedFolderPath(SUITE, "system-test")).toBe(`${PROJECT}/system-test`);
+  });
+
   it("handles root-level path", () => {
     expect(computeRenamedFolderPath("foo", "bar")).toBe("bar");
   });

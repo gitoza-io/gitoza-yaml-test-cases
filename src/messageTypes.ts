@@ -144,6 +144,7 @@ export type WebviewRequestType =
   | "deleteCase"
   | "deleteFolder"
   | "deleteProject"
+  | "renameFolder"
   | "findRunsReferencingCases";
 
 export interface WebviewRequest {

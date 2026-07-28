@@ -183,7 +183,11 @@ function RepositoryFolderTree({
         setRenameFolderConflict(null);
         return;
       }
-      if (!onRenameFolder) return;
+      if (!onRenameFolder) {
+        setRenamingPath(null);
+        setRenameFolderConflict(null);
+        return;
+      }
       setRenameFolderConflict(null);
       try {
         await onRenameFolder(folderPath, newName);
@@ -269,9 +273,13 @@ function RepositoryFolderTree({
     contextMenuItems.push(
       { icon: FilePlus2, label: "New Test Case", onClick: handleContextNewCase },
       { icon: FolderPlus, label: "New Test Suite", onClick: handleContextNewSuite },
-      { type: "separator" },
-      { icon: Pencil, label: "Rename", onClick: handleContextRename },
     );
+    if (onRenameFolder) {
+      contextMenuItems.push(
+        { type: "separator" },
+        { icon: Pencil, label: "Rename", onClick: handleContextRename },
+      );
+    }
     if (!isProject && onDeleteFolder) {
       contextMenuItems.push({ type: "separator" });
       contextMenuItems.push({

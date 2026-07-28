@@ -13,6 +13,7 @@ import {
   findRunsReferencingCases,
   getCaseDetail,
   getCaseFilters,
+  renameFolder,
   updateCase,
   initializeCasesRoot,
 } from "../services/api";
@@ -24,7 +25,12 @@ import {
   pathUnderPrefix,
   pathsFromCaseDeletePayload,
 } from "../utils/deleteConfirmCopy";
-import { sanitizeNameForPath } from "../utils/sanitize";
+import { remapPathUnderPrefix } from "../utils/patchRepositoryTree";
+import { displayNameFromSanitized, sanitizeNameForPath } from "../utils/sanitize";
+import {
+  getRenameConflictDisplayName,
+  RenameNameConflictError,
+} from "../utils/renameConflict";
 
 const ACTIVE_REPO = "vscode";
 
@@ -236,6 +242,45 @@ export default function TestRepositoryPage({ hasCasesRoot, onCasesRootInitialize
       }
     },
     [confirm, loadData],
+  );
+
+  const handleRenameFolder = useCallback(
+    async (folderPath, newName) => {
+      const sanitized = sanitizeNameForPath(newName);
+      if (!sanitized) {
+        throw new Error(
+          "Invalid folder name. Use only letters, numbers, underscores, and hyphens.",
+        );
+      }
+      try {
+        const result = await renameFolder(folderPath, sanitized);
+        const oldPath = result?.old_path ?? folderPath;
+        const newPath = result?.new_path;
+        if (newPath && oldPath !== newPath) {
+          setSelectedFolderPath((prev) =>
+            prev ? remapPathUnderPrefix(prev, oldPath, newPath) : prev,
+          );
+          setSelectedCaseFilePath((prev) =>
+            prev ? remapPathUnderPrefix(prev, oldPath, newPath) : prev,
+          );
+        }
+        await loadData();
+        caseListWindowRef.current?.invalidateAll?.();
+        return result;
+      } catch (err) {
+        const msg = err?.message || "";
+        if (/already exists/i.test(msg)) {
+          throw new RenameNameConflictError(
+            getRenameConflictDisplayName({
+              kind: "folder",
+              newName: displayNameFromSanitized(sanitized),
+            }),
+          );
+        }
+        throw err;
+      }
+    },
+    [loadData],
   );
 
   const handleCommitInlineCase = useCallback(
@@ -453,6 +498,7 @@ export default function TestRepositoryPage({ hasCasesRoot, onCasesRootInitialize
         contextTargetFolder={selectedFolderPath}
         onContextCreateTestCase={() => setShowCreateFormInPanel(true)}
         onCreateFolder={handleCreateFolder}
+        onRenameFolder={handleRenameFolder}
         onOpenCreateProject={() => setCreatingProject(true)}
         creatingProject={creatingProject}
         onCommitInlineProject={handleCommitInlineProject}

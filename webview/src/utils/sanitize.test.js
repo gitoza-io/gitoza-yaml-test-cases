@@ -24,6 +24,11 @@ describe("sanitizeNameForPath", () => {
     expect(sanitizeNameForPath("!!!", "run")).toBe("run");
     expect(sanitizeNameForPath(null, "run")).toBe("run");
   });
+
+  it("sanitizes rename-style spaced names to hyphenated folder segments", () => {
+    expect(sanitizeNameForPath("login suite")).toBe("login-suite");
+    expect(sanitizeNameForPath("  Auth Flow  ")).toBe("Auth-Flow");
+  });
 });
 
 describe("displayNameFromSanitized", () => {
