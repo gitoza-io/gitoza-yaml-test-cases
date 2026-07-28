@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-07-28
+
+### Added
+
+- **Rename** projects and suites from the Test Repository tree
+- Project, suite, and run names can include spaces (shown with spaces; stored safely on disk)
+
+### Fixed
+
+- Creating a project, suite, or run with spaces no longer leaves the sidebar stuck on loading
+- Project case-count badges no longer show double the real number
+- **Add cases** to a run hides cases already in the run, and hides suites/projects that have nothing left to add
+
 ## [0.2.0] - 2026-07-01
 
 ### Added
@@ -44,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Activity Bar launcher and **Gitoza: Open Test Repository** command
 - Pending run-result updates with unsaved-changes prompt before save
 
+[0.2.1]: https://github.com/gitoza-io/gitoza-yaml-test-cases/releases/tag/v0.2.1
 [0.2.0]: https://github.com/gitoza-io/gitoza-yaml-test-cases/releases/tag/v0.2.0
 [0.1.1]: https://github.com/gitoza-io/gitoza-yaml-test-cases/releases/tag/v0.1.1
 [0.1.0]: https://github.com/gitoza-io/gitoza-yaml-test-cases/releases/tag/v0.1.0
