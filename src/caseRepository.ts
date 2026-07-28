@@ -10,10 +10,12 @@ import type {
 import { CASES_ROOT } from "./messageTypes";
 import {
   assertUnderCasesRoot,
+  displayNameFromSanitized,
   isValidCaseId,
   isValidName,
   joinRepoPath,
   resolveCasesRootUri,
+  sanitizeNameForPath,
   toRepoRelativePath,
 } from "./workspace";
 import {
@@ -83,8 +85,8 @@ export class CaseRepository {
       );
       const caseCount = await this.countYamlFiles(childUri);
       const displayName = isProject
-        ? name.replace(/\.gitoza\.test$/i, "").replace(/_/g, " ")
-        : name.replace(/_/g, " ");
+        ? displayNameFromSanitized(name.replace(/\.gitoza\.test$/i, ""))
+        : displayNameFromSanitized(name);
 
       nodes.push({
         type: "folder",
@@ -209,7 +211,7 @@ export class CaseRepository {
   }
 
   async createProject(projectName: string): Promise<{ project_path: string }> {
-    const name = projectName.trim();
+    const name = sanitizeNameForPath(projectName);
     if (!isValidName(name)) {
       throw new Error(
         "Invalid project name. Use only letters, numbers, underscores, and hyphens.",
@@ -239,7 +241,7 @@ export class CaseRepository {
     folderName: string,
   ): Promise<{ directory_path: string }> {
     const parent = parentPath.trim().replace(/\\/g, "/");
-    const name = folderName.trim();
+    const name = sanitizeNameForPath(folderName);
     if (!isValidName(name)) {
       throw new Error("Invalid folder name.");
     }

@@ -58,6 +58,7 @@ describe("folderDisplayNameFromSanitized", () => {
   it("replaces underscores and hyphens with spaces", () => {
     expect(folderDisplayNameFromSanitized("login_suite")).toBe("login suite");
     expect(folderDisplayNameFromSanitized("my-suite")).toBe("my suite");
+    expect(folderDisplayNameFromSanitized("system-test")).toBe("system test");
   });
 });
 
@@ -124,6 +125,14 @@ describe("patchRepositoryTreeForFolderCreate", () => {
     expect(created.display_name).toBe("sign in");
     expect(created.case_count).toBe(0);
     expect(created.children).toEqual([]);
+  });
+
+  it("displays hyphenated suite names with spaces", () => {
+    const newPath = `${PROJECT}/system-test`;
+    const { tree, changed } = patchRepositoryTreeForFolderCreate(makeTree(), PROJECT, newPath);
+    expect(changed).toBe(true);
+    const created = tree[0].children.find((c) => c.directory_path === newPath);
+    expect(created.display_name).toBe("system test");
   });
 
   it("inserts under nested suite parent", () => {

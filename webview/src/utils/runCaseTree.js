@@ -1,5 +1,6 @@
 import { CASES_ROOT } from "../constants/casePaths";
 import { compareCasesByCaseId } from "./exportHierarchy";
+import { displayNameFromSanitized } from "./sanitize";
 import {
   findFolderNode,
   findFolderDisplayName,
@@ -145,12 +146,12 @@ function folderFromFilePath(filePath) {
 
 function projectDisplayName(projectPath) {
   const name = projectPath.split("/").pop() || "";
-  return name.replace(/_/g, " ").replace(/-/g, " ").trim() || name;
+  return displayNameFromSanitized(name).trim() || name;
 }
 
 function suiteDisplayName(suitePath) {
   const name = suitePath.split("/").pop() || "";
-  return name.replace(/_/g, " ").trim() || name;
+  return displayNameFromSanitized(name).trim() || name;
 }
 
 /**

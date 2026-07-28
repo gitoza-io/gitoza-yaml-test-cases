@@ -9,6 +9,7 @@ import {
   casesRootPartCount,
   startsWithCasesRootParts,
 } from "../constants/casePaths";
+import { displayNameFromSanitized } from "./sanitize";
 
 /**
  * Attach cases to each folder node. Cases are placed on the node that directly contains them.
@@ -464,7 +465,7 @@ export function buildProjectNodesFromDashboard(dashboardSummary) {
     const path = p.project_path || "";
     const segment = path.split("/").pop() || path;
     const name = segment.includes(".gitoza.test") ? segment : `${segment}.gitoza.test`;
-    const display = (p.project_name ?? segment).replace(/_/g, " ");
+    const display = displayNameFromSanitized(p.project_name ?? segment);
     return {
       type: "folder",
       name,

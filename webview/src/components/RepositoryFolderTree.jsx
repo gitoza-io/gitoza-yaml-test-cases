@@ -203,9 +203,14 @@ function RepositoryFolderTree({
   );
 
   const handleCreateFolderCommit = useCallback(
-    (parentPath, folderName) => {
+    async (parentPath, folderName) => {
       setCreatingInPath(null);
-      if (folderName && onCreateFolder) onCreateFolder(parentPath, folderName);
+      if (!folderName || !onCreateFolder) return;
+      try {
+        await onCreateFolder(parentPath, folderName);
+      } catch {
+        // Parent handlers surface errors; do not leave create UI stuck loading.
+      }
     },
     [onCreateFolder, setCreatingInPath],
   );

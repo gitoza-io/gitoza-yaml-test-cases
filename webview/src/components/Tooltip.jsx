@@ -3,11 +3,12 @@ import { createPortal } from "react-dom";
 
 const SHOW_DELAY_MS = 600;
 const HIDE_DELAY_MS = 100;
+const INTERACTIVE_HIDE_DELAY_MS = 300;
 const GAP_PX = 8;
 
 // Softer, less prominent: light gray in light mode, medium gray in dark
 const TOOLTIP_BASE_CLASS =
-  "pointer-events-none z-[1000] rounded-ui px-2 py-1 text-xs font-medium shadow-md max-w-xs " +
+  "z-[1000] rounded-ui px-2 py-1 text-xs font-medium shadow-md max-w-xs " +
   "bg-slate-200/95 text-slate-800 dark:bg-slate-600/95 dark:text-slate-100";
 
 // Arrow: softer triangle (wider base, shorter tip) for a friendlier look; color matches tooltip
@@ -21,14 +22,28 @@ const ARROW_COLOR_DARK = "rgb(71 85 105)"; // slate-600
  * Rendered in a portal so it is not clipped by overflow. Closes on click (trigger or document).
  * Accessible (focus triggers tooltip).
  *
- * @param {{ label: string; children: React.ReactNode; placement?: 'right' | 'top' | 'bottom' | 'bottom-end'; delayMs?: number }} props
+ * @param {{
+ *   label: React.ReactNode;
+ *   children: React.ReactNode;
+ *   placement?: 'right' | 'top' | 'bottom' | 'bottom-end';
+ *   delayMs?: number;
+ *   interactive?: boolean;
+ * }} props
  * - bottom-end: tooltip below trigger, right edge aligned with trigger's right; arrow on the right.
+ * - interactive: allow pointer events on the tooltip so links inside can be clicked; keeps open while hovering tooltip.
  */
-function Tooltip({ label, children, placement = "right", delayMs = SHOW_DELAY_MS }) {
+function Tooltip({
+  label,
+  children,
+  placement = "right",
+  delayMs = SHOW_DELAY_MS,
+  interactive = false,
+}) {
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState({ left: 0, top: 0 });
   const [positionReady, setPositionReady] = useState(false);
   const triggerRef = useRef(null);
+  const tooltipRef = useRef(null);
   const showTimerRef = useRef(null);
   const hideTimerRef = useRef(null);
   const suppressShowUntilRef = useRef(0);
@@ -58,8 +73,16 @@ function Tooltip({ label, children, placement = "right", delayMs = SHOW_DELAY_MS
 
   const hide = useCallback(() => {
     clearTimers();
-    hideTimerRef.current = setTimeout(hideImmediate, HIDE_DELAY_MS);
-  }, [clearTimers, hideImmediate]);
+    const hideDelay = interactive ? INTERACTIVE_HIDE_DELAY_MS : HIDE_DELAY_MS;
+    hideTimerRef.current = setTimeout(hideImmediate, hideDelay);
+  }, [clearTimers, hideImmediate, interactive]);
+
+  const cancelHide = useCallback(() => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+  }, []);
 
   // Position tooltip when it becomes visible
   useEffect(() => {
@@ -114,7 +137,8 @@ function Tooltip({ label, children, placement = "right", delayMs = SHOW_DELAY_MS
     setPositionReady(true);
   }, [visible, placement]);
 
-  // Close on any document click (including trigger click); suppress re-show on focus for a short time
+  // Close on any document click (including trigger click); suppress re-show on focus for a short time.
+  // For interactive tooltips, ignore clicks inside the tooltip so links remain usable.
   const hideFromClick = useCallback(() => {
     hideImmediate();
     suppressShowUntilRef.current = Date.now() + 400;
@@ -122,10 +146,13 @@ function Tooltip({ label, children, placement = "right", delayMs = SHOW_DELAY_MS
 
   useEffect(() => {
     if (!visible) return;
-    const onDocClick = () => hideFromClick();
+    const onDocClick = (e) => {
+      if (interactive && tooltipRef.current?.contains(e.target)) return;
+      hideFromClick();
+    };
     document.addEventListener("click", onDocClick, true);
     return () => document.removeEventListener("click", onDocClick, true);
-  }, [visible, hideFromClick]);
+  }, [visible, hideFromClick, interactive]);
 
   // Arrow color matches tooltip; detect dark mode for inline style (no dark: in style)
   const isDark =
@@ -186,12 +213,17 @@ function Tooltip({ label, children, placement = "right", delayMs = SHOW_DELAY_MS
           ? arrowStyleBottomEnd
           : arrowStyleRight;
 
+  const tooltipClassName = `${TOOLTIP_BASE_CLASS} relative overflow-visible ${
+    interactive ? "pointer-events-auto" : "pointer-events-none"
+  }`;
+
   const tooltipContent =
     visible && positionReady && typeof document !== "undefined"
       ? createPortal(
           <span
+            ref={tooltipRef}
             role="tooltip"
-            className={`${TOOLTIP_BASE_CLASS} relative overflow-visible`}
+            className={tooltipClassName}
             style={{
               position: "fixed",
               left: position.left,
@@ -205,6 +237,8 @@ function Tooltip({ label, children, placement = "right", delayMs = SHOW_DELAY_MS
                       ? "translate(-100%, 0)"
                       : "translateY(-50%)",
             }}
+            onMouseEnter={interactive ? cancelHide : undefined}
+            onMouseLeave={interactive ? hide : undefined}
           >
             <span style={arrowStyle} aria-hidden="true" role="presentation" />
             {label}
@@ -221,7 +255,10 @@ function Tooltip({ label, children, placement = "right", delayMs = SHOW_DELAY_MS
         onMouseEnter={show}
         onMouseLeave={hide}
         onFocusCapture={show}
-        onBlurCapture={hide}
+        onBlurCapture={(e) => {
+          if (interactive && tooltipRef.current?.contains(e.relatedTarget)) return;
+          hide();
+        }}
         onClick={hideFromClick}
       >
         {children}

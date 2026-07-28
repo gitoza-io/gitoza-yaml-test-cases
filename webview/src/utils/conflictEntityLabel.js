@@ -50,10 +50,10 @@ export function runDisplayName(filePath) {
   const normalized = (filePath || "").replace(/\\/g, "/").replace(/\.ya?ml$/i, "");
   if (normalized.startsWith(RUNS_PREFIX)) {
     const name = normalized.slice(RUNS_PREFIX.length);
-    return name.replace(/_/g, " ") || filePath;
+    return name.replace(/_/g, " ").replace(/-/g, " ") || filePath;
   }
   const base = normalized.split("/").pop() || filePath;
-  return base.replace(/_/g, " ");
+  return base.replace(/_/g, " ").replace(/-/g, " ");
 }
 
 export function templateDisplayName(filePath) {

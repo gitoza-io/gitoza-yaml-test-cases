@@ -36,6 +36,7 @@ import {
   findRunFolderDisplayName,
   parseRunTreePath,
 } from "../utils/runCaseTree";
+import { displayNameFromSanitized, sanitizeNameForPath } from "../utils/sanitize";
 
 const ACTIVE_REPO = "vscode";
 
@@ -319,17 +320,43 @@ export default function TestRunPage({
 
   const handleCommitCreateRun = useCallback(
     async (name) => {
-      setCreatingRun(false);
-      if (!name?.trim()) return;
-      if (!hasRunsRoot) {
-        await initializeRunsRoot();
-        onRunsRootInitialized?.();
+      if (!name?.trim()) {
+        setCreatingRun(false);
+        return;
       }
-      const detail = await createRun(name.trim(), name.trim());
-      await loadRuns();
-      setSelectedRunId(detail.run_id);
+      const sanitized = sanitizeNameForPath(name);
+      if (!sanitized) {
+        setCreatingRun(false);
+        await confirm({
+          title: "Could not create run",
+          description:
+            "Invalid run name. Use only letters, numbers, underscores, and hyphens.",
+          confirmLabel: "OK",
+          variant: "danger",
+        });
+        return;
+      }
+      const title = displayNameFromSanitized(sanitized);
+      try {
+        if (!hasRunsRoot) {
+          await initializeRunsRoot();
+          onRunsRootInitialized?.();
+        }
+        const detail = await createRun(sanitized, title);
+        await loadRuns();
+        setCreatingRun(false);
+        setSelectedRunId(detail.run_id);
+      } catch (err) {
+        setCreatingRun(false);
+        await confirm({
+          title: "Could not create run",
+          description: err?.message || "Failed to create run",
+          confirmLabel: "OK",
+          variant: "danger",
+        });
+      }
     },
-    [hasRunsRoot, loadRuns, onRunsRootInitialized],
+    [confirm, hasRunsRoot, loadRuns, onRunsRootInitialized],
   );
 
   const handleDeleteRun = useCallback(

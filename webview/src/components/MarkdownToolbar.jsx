@@ -19,22 +19,30 @@ export default function MarkdownToolbar({
   imageSyncBlocked = false,
   imageTooltip = null,
   onImageConfigureClick = null,
+  imageActionLabel = "Configure",
   className = "",
   rightContent = null,
 }) {
+  const handleImageClick = imageSyncBlocked
+    ? onImageConfigureClick || undefined
+    : onInsertImage;
+
   const imageBtn = onInsertImage ? (
     <button
       type="button"
-      onClick={imageSyncBlocked ? onImageConfigureClick : onInsertImage}
+      onClick={handleImageClick}
       disabled={!imageSyncBlocked && (disabled || imageDisabled)}
-      className={`${btnCls} ${imageSyncBlocked ? "cursor-pointer opacity-40" : ""}`}
+      className={`${btnCls} ${imageSyncBlocked ? "cursor-default opacity-40" : ""}`}
       title={imageSyncBlocked ? undefined : "Insert image"}
-      aria-label="Insert image"
+      aria-label={imageSyncBlocked ? "Insert image (desktop app only)" : "Insert image"}
       aria-disabled={imageSyncBlocked || disabled || imageDisabled}
     >
       <Image className="h-3.5 w-3.5" />
     </button>
   ) : null;
+
+  const showImageAction =
+    imageSyncBlocked && onImageConfigureClick && imageActionLabel;
 
   return (
     <div
@@ -83,19 +91,19 @@ export default function MarkdownToolbar({
       {imageBtn ? (
         <div className="inline-flex items-center gap-1">
           {imageSyncBlocked && imageTooltip ? (
-            <Tooltip label={imageTooltip} placement="bottom">
+            <Tooltip label={imageTooltip} placement="bottom" interactive>
               <span className="inline-flex">{imageBtn}</span>
             </Tooltip>
           ) : (
             imageBtn
           )}
-          {imageSyncBlocked && onImageConfigureClick ? (
+          {showImageAction ? (
             <button
               type="button"
               onClick={onImageConfigureClick}
               className="text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
             >
-              Configure
+              {imageActionLabel}
             </button>
           ) : null}
         </div>

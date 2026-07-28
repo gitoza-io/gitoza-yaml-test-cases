@@ -4,6 +4,7 @@
  */
 
 import { projectFromFilePath } from "./runCaseTree";
+import { displayNameFromSanitized } from "./sanitize";
 
 function folderFromFilePath(filePath) {
   const p = (filePath || "").replace(/\\/g, "/");
@@ -13,12 +14,12 @@ function folderFromFilePath(filePath) {
 
 function projectDisplayName(projectPath) {
   const name = projectPath.split("/").pop() || "";
-  return name.replace(/_/g, " ").replace(/-/g, " ").trim() || name;
+  return displayNameFromSanitized(name).trim() || name;
 }
 
 function suiteDisplayName(suitePath) {
   const name = suitePath.split("/").pop() || "";
-  return name.replace(/_/g, " ").trim() || name;
+  return displayNameFromSanitized(name).trim() || name;
 }
 
 /**

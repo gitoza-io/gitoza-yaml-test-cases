@@ -17,6 +17,8 @@ import { getTagColorClass } from "../utils/tagColor";
 import { TagOptionRow } from "./TagBadge";
 import { isCaseArchived } from "../utils/caseArchived";
 import { DEFAULT_CASE_BODY } from "../constants/defaultCaseBodyTemplates";
+import { SUPPORT_URLS } from "../constants/supportLinks";
+import { openExternalUrl } from "../utils/openExternalUrl";
 
 const CASE_ID_RE = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const inputCls =
@@ -333,9 +335,26 @@ function CaseEditorPanel({
     repoSlug,
   });
 
-  const handleInsertImageClick = useCallback(() => {
-    setError("Image insert is available in the Gitoza desktop app only.");
+  const handleInsertImageClick = useCallback(() => {}, []);
+
+  const handleOpenDesktopApp = useCallback((e) => {
+    e.preventDefault();
+    openExternalUrl(SUPPORT_URLS.desktopApp).catch(() => {});
   }, []);
+
+  const imageDesktopTooltip = (
+    <>
+      Image insert is available in the{" "}
+      <a
+        href={SUPPORT_URLS.desktopApp}
+        className="font-semibold text-indigo-700 underline hover:text-indigo-900 dark:text-indigo-300 dark:hover:text-indigo-200"
+        onClick={handleOpenDesktopApp}
+      >
+        Gitoza
+      </a>{" "}
+      desktop app.
+    </>
+  );
 
   const handleOpenSaveTemplateModal = useCallback(async () => {}, []);
   const handleSaveTemplateForm = useCallback(async (e) => {
@@ -722,6 +741,9 @@ function CaseEditorPanel({
                 <MarkdownToolbar
                   {...toolbarProps}
                   onInsertImage={handleInsertImageClick}
+                  imageSyncBlocked
+                  imageTooltip={imageDesktopTooltip}
+                  imageActionLabel={null}
                   imageDisabled={editorLocked || manualSave}
                   rightContent={
                     manualSave ? (

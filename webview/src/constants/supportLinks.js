@@ -7,4 +7,5 @@ export const SUPPORT_URLS = {
   discussions: `https://github.com/gitoza-io/gitoza-community/discussions`,
   bugReport: "https://github.com/gitoza-io/gitoza-community/issues/new",
   contactSupport: "mailto:support@gitoza.com",
+  desktopApp: "https://gitoza.com",
 };

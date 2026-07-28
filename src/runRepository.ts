@@ -10,9 +10,11 @@ import { RUNS_ROOT } from "./messageTypes";
 import {
   assertUnderCasesRoot,
   assertUnderRunsRoot,
+  displayNameFromSanitized,
   isValidName,
   joinRepoPath,
   resolveRunsRootUri,
+  sanitizeNameForPath,
 } from "./workspace";
 import {
   parseRunYaml,
@@ -200,7 +202,7 @@ export class RunRepository {
   }
 
   async createRun(runId: string, title?: string): Promise<RunDetail> {
-    const id = runId.trim();
+    const id = sanitizeNameForPath(runId);
     if (!isValidName(id)) {
       throw new Error(
         "Invalid run name. Use only letters, numbers, underscores, and hyphens.",
@@ -221,8 +223,13 @@ export class RunRepository {
         throw e;
       }
     }
+    const rawTitle = title?.trim();
+    const displayTitle =
+      !rawTitle || rawTitle === id
+        ? displayNameFromSanitized(id) || id
+        : rawTitle;
     await this.writeRunFile(resolved, fileRel, {
-      title: title?.trim() || id,
+      title: displayTitle,
       cases: [],
     });
     return this.getRunDetail(id);

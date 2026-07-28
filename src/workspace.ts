@@ -86,6 +86,11 @@ export function isValidName(name: string): boolean {
   return /^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(name.trim());
 }
 
+export {
+  displayNameFromSanitized,
+  sanitizeNameForPath,
+} from "./nameSanitize";
+
 export function isValidCaseId(caseId: string): boolean {
   return /^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(caseId.trim());
 }

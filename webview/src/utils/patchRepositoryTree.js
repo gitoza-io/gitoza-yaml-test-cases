@@ -3,6 +3,7 @@
  */
 
 import { projectPathFromDirectory } from "./caseTree";
+import { displayNameFromSanitized } from "./sanitize";
 
 function nodeDirectoryPath(node) {
   return normalizePath(node?.repo_directory_path ?? node?.directory_path);
@@ -26,9 +27,8 @@ export function computeRenamedFolderPath(folderPath, sanitizedName) {
  * @returns {string}
  */
 export function folderDisplayNameFromSanitized(sanitized) {
-  return (sanitized || "").replace(/_/g, " ").replace(/-/g, " ");
+  return displayNameFromSanitized(sanitized);
 }
-
 /**
  * @param {string | null | undefined} path
  * @param {string} oldPath

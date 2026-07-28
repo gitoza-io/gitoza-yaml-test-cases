@@ -7,6 +7,7 @@ import {
   buildCasePayloads,
   CSV_IMPORT_MAX_SAMPLE_ROWS,
 } from "../utils/csvImportUtils";
+import { displayNameFromSanitized } from "../utils/sanitize";
 
 const labelCls = "mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400";
 const selectCls =
@@ -103,7 +104,7 @@ function ImportTargetProjectPicker({ directory, targetFolder = null, projects = 
       >
         <option value="">Select a project…</option>
         {projects.map((p) => {
-          const name = (p.project_name ?? p.project_path).replace(/_/g, " ");
+          const name = displayNameFromSanitized(p.project_name ?? p.project_path);
           return (
             <option key={p.project_path} value={p.project_path}>
               {name}

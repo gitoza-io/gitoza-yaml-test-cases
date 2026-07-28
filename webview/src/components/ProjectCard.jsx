@@ -1,4 +1,5 @@
 import { Clock3, FolderOpen, UserRound } from "lucide-react";
+import { displayNameFromSanitized } from "../utils/sanitize";
 
 /**
  * Project card: folder-level aggregate. Displays suite_count, total_test_cases,
@@ -27,7 +28,7 @@ function ProjectCard({ project, onClick }) {
     : "No activity";
   const activityAuthor = activity?.author ?? "—";
 
-  const displayName = (project.project_name ?? "").replace(/_/g, " ");
+  const displayName = displayNameFromSanitized(project.project_name ?? "");
   const subtitle = `${suiteCount} Test Suite${suiteCount !== 1 ? "s" : ""} · ${total} Total Test Cases`;
 
   return (

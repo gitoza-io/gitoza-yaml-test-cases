@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { FolderPlus, X } from "lucide-react";
 import { CASES_ROOT } from "../constants/casePaths";
-
-const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+import { displayNameFromSanitized, sanitizeNameForPath } from "../utils/sanitize";
 
 function CreateProjectModal({ onSubmit, onClose }) {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const isValid = name.trim().length > 0 && NAME_RE.test(name.trim());
+  const sanitized = sanitizeNameForPath(name);
+  const isValid = sanitized.length > 0;
+  const preview = isValid ? displayNameFromSanitized(sanitized) : "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,7 +18,7 @@ function CreateProjectModal({ onSubmit, onClose }) {
     setLoading(true);
     setError("");
     try {
-      await onSubmit(name.trim());
+      await onSubmit(sanitized);
     } catch (err) {
       setError(err?.response?.data?.detail || err?.message || "Failed to create project");
       setLoading(false);
@@ -58,15 +59,24 @@ function CreateProjectModal({ onSubmit, onClose }) {
                 setName(e.target.value);
                 setError("");
               }}
-              placeholder="e.g. PaymentModule"
+              placeholder="e.g. Payment Module"
               className="w-full rounded border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none ring-indigo-400 transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
             <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-              Letters, numbers, underscores, and hyphens only. Project folder under <code className="rounded bg-slate-200 px-1 dark:bg-slate-700">{CASES_ROOT}/</code> will be created.
+              Spaces become hyphens in the folder name under{" "}
+              <code className="rounded bg-slate-200 px-1 dark:bg-slate-700">{CASES_ROOT}/</code>
+              {preview ? (
+                <>
+                  {" "}
+                  (folder: <code className="rounded bg-slate-200 px-1 dark:bg-slate-700">{sanitized}</code>).
+                </>
+              ) : (
+                "."
+              )}
             </p>
             {name.trim() && !isValid && (
               <p className="mt-1 text-xs text-red-500 dark:text-red-400">
-                Invalid name — only letters, numbers, underscores (_) and hyphens (-) are allowed.
+                Invalid name — use letters or numbers (spaces are converted to hyphens).
               </p>
             )}
           </div>

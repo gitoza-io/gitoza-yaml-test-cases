@@ -24,6 +24,7 @@ import {
   pathUnderPrefix,
   pathsFromCaseDeletePayload,
 } from "../utils/deleteConfirmCopy";
+import { sanitizeNameForPath } from "../utils/sanitize";
 
 const ACTIVE_REPO = "vscode";
 
@@ -156,7 +157,13 @@ export default function TestRepositoryPage({ hasCasesRoot, onCasesRootInitialize
 
   const handleCreateProject = useCallback(
     async (name) => {
-      await createProject(name, ACTIVE_REPO);
+      const sanitized = sanitizeNameForPath(name);
+      if (!sanitized) {
+        throw new Error(
+          "Invalid project name. Use only letters, numbers, underscores, and hyphens.",
+        );
+      }
+      await createProject(sanitized, ACTIVE_REPO);
       await loadData();
       setShowCreateProjectModal(false);
       setCreatingProject(false);
@@ -169,23 +176,66 @@ export default function TestRepositoryPage({ hasCasesRoot, onCasesRootInitialize
 
   const handleCommitInlineProject = useCallback(
     async (name) => {
-      setCreatingProject(false);
-      if (!name?.trim()) return;
-      if (!hasCasesRoot) {
-        await initializeCasesRoot();
-        onCasesRootInitialized?.();
+      if (!name?.trim()) {
+        setCreatingProject(false);
+        return;
       }
-      await handleCreateProject(name.trim());
+      const sanitized = sanitizeNameForPath(name);
+      if (!sanitized) {
+        setCreatingProject(false);
+        await confirm({
+          title: "Could not create project",
+          description:
+            "Invalid project name. Use only letters, numbers, underscores, and hyphens.",
+          confirmLabel: "OK",
+          variant: "danger",
+        });
+        return;
+      }
+      try {
+        if (!hasCasesRoot) {
+          await initializeCasesRoot();
+          onCasesRootInitialized?.();
+        }
+        await handleCreateProject(sanitized);
+      } catch (err) {
+        setCreatingProject(false);
+        await confirm({
+          title: "Could not create project",
+          description: err?.message || "Failed to create project",
+          confirmLabel: "OK",
+          variant: "danger",
+        });
+      }
     },
-    [handleCreateProject, hasCasesRoot, onCasesRootInitialized],
+    [confirm, handleCreateProject, hasCasesRoot, onCasesRootInitialized],
   );
 
   const handleCreateFolder = useCallback(
     async (parentPath, folderName) => {
-      await createFolder(parentPath, folderName, ACTIVE_REPO);
-      await loadData();
+      const sanitized = sanitizeNameForPath(folderName);
+      if (!sanitized) {
+        await confirm({
+          title: "Could not create suite",
+          description: "Invalid folder name.",
+          confirmLabel: "OK",
+          variant: "danger",
+        });
+        return;
+      }
+      try {
+        await createFolder(parentPath, sanitized, ACTIVE_REPO);
+        await loadData();
+      } catch (err) {
+        await confirm({
+          title: "Could not create suite",
+          description: err?.message || "Failed to create folder",
+          confirmLabel: "OK",
+          variant: "danger",
+        });
+      }
     },
-    [loadData],
+    [confirm, loadData],
   );
 
   const handleCommitInlineCase = useCallback(
